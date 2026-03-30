@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Alexa's Assistant</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -457,7 +458,13 @@
 <!-- HEADER -->
 <header>
   <div class="logo">Alexa's <span>Assistant</span></div>
-  <div class="header-date" id="header-date"></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="header-date" id="header-date"></div>
+    <div id="sync-status" style="font-size:0.75rem;color:var(--warm-gray);display:none"></div>
+    <button id="google-btn" onclick="googleSignIn()" style="display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--warm-white);font-family:'DM Sans',sans-serif;font-size:0.82rem;color:var(--warm-gray);cursor:pointer;transition:all 0.2s" title="Connect Google Sheets">
+      <span>🔗</span> Connect Google
+    </button>
+  </div>
 </header>
 
 <!-- TABS -->
@@ -780,6 +787,14 @@
 const WORKER_URL = 'https://alexa-proxy.nechilcutt.workers.dev';
 
 // ============================================================
+//  GOOGLE SHEETS CONFIG
+// ============================================================
+const GOOG_CLIENT_ID = '400814542208-3topsa7ad8el51vhv7c46pcv8ea2ugr0.apps.googleusercontent.com';
+const GOOG_SHEET_ID  = '1JQ6GUOaUDElA0xQtdjQdXIwxTFGdtUPY5q6BGD0ptfs';
+const GOOG_SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+let   googToken      = null;  // OAuth access token, held in memory only
+
+// ============================================================
 //  PIN SYSTEM
 // ============================================================
 let pinBuffer = '';
@@ -1011,7 +1026,7 @@ const SAMPLE_CLIENTS = [
 ];
 
 function getClients() { return JSON.parse(localStorage.getItem('aa_clients') || JSON.stringify(SAMPLE_CLIENTS)); }
-function saveClients(c) { localStorage.setItem('aa_clients', JSON.stringify(c)); }
+function saveClients(c) { localStorage.setItem('aa_clients', JSON.stringify(c)); pushClientsToSheets(); }
 function loadClients() { if(!localStorage.getItem('aa_clients')) saveClients(SAMPLE_CLIENTS); renderClients(); }
 
 function renderClients() {
@@ -1178,7 +1193,7 @@ const EXECED_STATUS_LABELS = { active:'Active', upcoming:'Upcoming', completed:'
 const EXECED_STATUS_CLASSES = { active:'status-active', upcoming:'status-upcoming', completed:'status-completed' };
 
 function getExecEd() { return JSON.parse(localStorage.getItem('aa_execed') || JSON.stringify(SAMPLE_EXECED)); }
-function saveExecEd(d) { localStorage.setItem('aa_execed', JSON.stringify(d)); }
+function saveExecEd(d) { localStorage.setItem('aa_execed', JSON.stringify(d)); pushExecEdToSheets(); }
 function loadExecEd() { if(!localStorage.getItem('aa_execed')) saveExecEd(SAMPLE_EXECED); renderExecEd(); }
 
 function renderExecEd() {
@@ -1462,6 +1477,162 @@ function saveLinkedinToClients() {
   alert(`${extractedLinkedin.name || 'Contact'} has been added to your clients! 🎉`);
   document.getElementById('linkedin-save-btn').style.display='none';
   extractedLinkedin = null;
+}
+
+// ============================================================
+//  GOOGLE OAUTH & SHEETS INTEGRATION
+// ============================================================
+
+function googleSignIn() {
+  const client = google.accounts.oauth2.initTokenClient({
+    client_id: GOOG_CLIENT_ID,
+    scope: GOOG_SCOPES,
+    callback: async (resp) => {
+      if (resp.error) { setSyncStatus('⚠️ Sign-in failed', true); return; }
+      googToken = resp.access_token;
+      localStorage.setItem('aa_goog_token', googToken);
+      setSyncStatus('✓ Connected', false);
+      updateGoogleBtn(true);
+      await ensureSheetsSetup();
+      await syncFromSheets();
+    }
+  });
+  client.requestAccessToken();
+}
+
+function updateGoogleBtn(connected) {
+  const btn = document.getElementById('google-btn');
+  if (connected) {
+    btn.innerHTML = '<span>✓</span> Google Connected';
+    btn.style.color = 'var(--sage-dark)';
+    btn.style.borderColor = 'var(--sage)';
+    btn.onclick = null;
+  }
+}
+
+function setSyncStatus(msg, isError) {
+  const el = document.getElementById('sync-status');
+  el.style.display = 'block';
+  el.textContent = msg;
+  el.style.color = isError ? '#c0392b' : 'var(--sage-dark)';
+  if (!isError) setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+// ---- Sheets API helpers ----
+
+async function sheetsRequest(method, path, body) {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${GOOG_SHEET_ID}${path}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${googToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok) throw new Error('Sheets API error: ' + res.status);
+  return res.json();
+}
+
+async function ensureSheetsSetup() {
+  // Check if sheets exist, create them if not
+  try {
+    const meta = await sheetsRequest('GET', '?fields=sheets.properties.title');
+    const existing = meta.sheets.map(s => s.properties.title);
+    const requests = [];
+    if (!existing.includes('Clients')) {
+      requests.push({ addSheet: { properties: { title: 'Clients' } } });
+    }
+    if (!existing.includes('ExecEd')) {
+      requests.push({ addSheet: { properties: { title: 'ExecEd' } } });
+    }
+    if (requests.length > 0) {
+      await sheetsRequest('POST', ':batchUpdate', { requests });
+    }
+    // Add headers if sheets are new
+    if (!existing.includes('Clients')) await writeSheetHeaders('Clients', ['id','name','type','email','phone','company','role','linkedin','next','notes','sessions']);
+    if (!existing.includes('ExecEd')) await writeSheetHeaders('ExecEd', ['id','name','institution','program','contact','email','startDate','endDate','cohortSize','status','notes','modules']);
+  } catch(e) {
+    setSyncStatus('⚠️ Sheet setup failed', true);
+  }
+}
+
+async function writeSheetHeaders(sheet, headers) {
+  await sheetsRequest('PUT', `/values/${sheet}!A1:${String.fromCharCode(64+headers.length)}1?valueInputOption=RAW`, {
+    values: [headers]
+  });
+}
+
+// ---- Sync FROM Sheets → app ----
+
+async function syncFromSheets() {
+  setSyncStatus('⟳ Syncing…', false);
+  try {
+    // Load clients
+    const clientRes = await sheetsRequest('GET', `/values/Clients!A2:K1000`);
+    if (clientRes.values && clientRes.values.length > 0) {
+      const clients = clientRes.values.map(r => ({
+        id: r[0]||'', name: r[1]||'', type: r[2]||'Coaching',
+        email: r[3]||'', phone: r[4]||'', company: r[5]||'',
+        role: r[6]||'', linkedin: r[7]||'', next: r[8]||'',
+        notes: r[9]||'', sessions: safeParseJSON(r[10], [])
+      }));
+      saveClients(clients);
+      renderClients();
+      document.getElementById('stat-clients').textContent = clients.length;
+    }
+    // Load exec ed
+    const eedRes = await sheetsRequest('GET', `/values/ExecEd!A2:L1000`);
+    if (eedRes.values && eedRes.values.length > 0) {
+      const programs = eedRes.values.map(r => ({
+        id: r[0]||'', name: r[1]||'', institution: r[2]||'',
+        program: r[3]||'', contact: r[4]||'', email: r[5]||'',
+        startDate: r[6]||'', endDate: r[7]||'', cohortSize: r[8]||'',
+        status: r[9]||'upcoming', notes: r[10]||'',
+        modules: safeParseJSON(r[11], [])
+      }));
+      saveExecEd(programs);
+      renderExecEd();
+    }
+    setSyncStatus('✓ Synced', false);
+  } catch(e) {
+    setSyncStatus('⚠️ Sync failed', true);
+  }
+}
+
+// ---- Sync TO Sheets ← app ----
+
+async function pushClientsToSheets() {
+  if (!googToken) return;
+  try {
+    const clients = getClients();
+    const values = clients.map(c => [
+      c.id, c.name, c.type, c.email||'', c.phone||'',
+      c.company||'', c.role||'', c.linkedin||'', c.next||'',
+      c.notes||'', JSON.stringify(c.sessions||[])
+    ]);
+    // Clear and rewrite
+    await sheetsRequest('PUT', `/values/Clients!A2:K${values.length+1}?valueInputOption=RAW`, { values });
+    setSyncStatus('✓ Saved', false);
+  } catch(e) { setSyncStatus('⚠️ Save failed', true); }
+}
+
+async function pushExecEdToSheets() {
+  if (!googToken) return;
+  try {
+    const programs = getExecEd();
+    const values = programs.map(p => [
+      p.id, p.name, p.institution||'', p.program||'', p.contact||'',
+      p.email||'', p.startDate||'', p.endDate||'', p.cohortSize||'',
+      p.status||'upcoming', p.notes||'', JSON.stringify(p.modules||[])
+    ]);
+    await sheetsRequest('PUT', `/values/ExecEd!A2:L${values.length+1}?valueInputOption=RAW`, { values });
+    setSyncStatus('✓ Saved', false);
+  } catch(e) { setSyncStatus('⚠️ Save failed', true); }
+}
+
+function safeParseJSON(str, fallback) {
+  try { return JSON.parse(str); } catch { return fallback; }
 }
 
 // ============================================================
