@@ -544,7 +544,10 @@
     <div class="card">
       <div class="calendar-header">
         <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">← Prev</button>
-        <div class="calendar-title" id="cal-month-title"></div>
+        <div>
+          <div class="calendar-title" id="cal-month-title"></div>
+          <div id="cal-source" style="font-size:0.72rem;color:var(--warm-gray);text-align:center"></div>
+        </div>
         <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">Next →</button>
       </div>
       <div class="legend">
@@ -791,7 +794,7 @@ const WORKER_URL = 'https://alexa-proxy.nechilcutt.workers.dev';
 // ============================================================
 const GOOG_CLIENT_ID = '400814542208-3topsa7ad8el51vhv7c46pcv8ea2ugr0.apps.googleusercontent.com';
 const GOOG_SHEET_ID  = '1JQ6GUOaUDElA0xQtdjQdXIwxTFGdtUPY5q6BGD0ptfs';
-const GOOG_SCOPES    = 'https://www.googleapis.com/auth/spreadsheets';
+const GOOG_SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.readonly';
 let   googToken      = null;  // OAuth access token, held in memory only
 
 // ============================================================
@@ -913,9 +916,60 @@ function toggleVoice() {
 }
 
 // ============================================================
-//  CALENDAR
+//  GOOGLE CALENDAR
 // ============================================================
+let realCalendarEvents = []; // populated after Google sign-in
+
+async function fetchGoogleCalendar() {
+  if (!googToken) return;
+  setSyncStatus('⟳ Loading calendar…', false);
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const end = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=100`;
+    const res = await fetch(url, {
+      headers: { 'Authorization': `Bearer ${googToken}` }
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error?.message || 'Calendar API error');
+    realCalendarEvents = (data.items || []).map(e => {
+      const dateStr = e.start?.date || e.start?.dateTime?.split('T')[0];
+      const d = new Date(dateStr + 'T00:00:00');
+      // Try to match to a client by name
+      const clients = getClients();
+      const matchedClient = clients.find(c => e.summary && e.summary.toLowerCase().includes(c.name.toLowerCase().split(' ')[0].toLowerCase()));
+      // Try to match to exec ed program
+      const programs = getExecEd();
+      const matchedProgram = programs.find(p => e.summary && e.summary.toLowerCase().includes(p.name.toLowerCase().split(' ')[0].toLowerCase()));
+      // Determine type
+      let type = 'admin';
+      const title = (e.summary || '').toLowerCase();
+      if (title.includes('coach') || matchedClient?.type === 'Coaching') type = 'coach';
+      else if (title.includes('corp') || title.includes('training') || matchedClient?.type === 'Corporate Training') type = 'corp';
+      else if (title.includes('exec') || title.includes('exec ed') || matchedProgram) type = 'exec';
+      return {
+        date: d.toDateString(),
+        title: e.summary || '(No title)',
+        type,
+        clientId: matchedClient?.id || null,
+        execedId: matchedProgram?.id || null,
+        isReal: true
+      };
+    });
+    renderCalendar();
+    renderUpcoming();
+    setSyncStatus('✓ Calendar loaded', false);
+  } catch(e) {
+    console.error('Calendar error:', e);
+    setSyncStatus('⚠️ Calendar: ' + e.message, true);
+  }
+}
 let calDate = new Date();
+
+function getActiveEvents() {
+  return realCalendarEvents.length > 0 ? realCalendarEvents : sampleEvents;
+}
 
 function offset(days) {
   const d = new Date(); d.setDate(d.getDate()+days);
@@ -940,6 +994,8 @@ const sampleEvents = [
 function renderCalendar() {
   const year = calDate.getFullYear(), month = calDate.getMonth();
   document.getElementById('cal-month-title').textContent = new Date(year,month,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const sourceEl = document.getElementById('cal-source');
+  if (sourceEl) sourceEl.textContent = realCalendarEvents.length > 0 ? '📅 Showing your Google Calendar' : '📋 Showing sample data — connect Google to see real events';
   const grid = document.getElementById('cal-grid');
   grid.innerHTML = '';
   ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
@@ -957,7 +1013,7 @@ function renderCalendar() {
     const dayEl = document.createElement('div'); dayEl.className='cal-day';
     const dateStr = new Date(year,month,day).toDateString();
     if(dateStr===today) dayEl.classList.add('today');
-    const events = sampleEvents.filter(e=>e.date===dateStr);
+    const events = getActiveEvents().filter(e=>e.date===dateStr);
     const numEl = document.createElement('div'); numEl.className='cal-day-num'; numEl.textContent=day;
     dayEl.appendChild(numEl);
     events.slice(0,3).forEach(e => {
@@ -989,7 +1045,7 @@ const typeColors = {exec:'event-exec',corp:'event-corp',coach:'event-coach',admi
 
 function renderUpcoming() {
   const list = document.getElementById('upcoming-list');
-  const upcoming = sampleEvents.filter(e=>new Date(e.date)>=new Date()).slice(0,5);
+  const upcoming = getActiveEvents().filter(e=>new Date(e.date)>=new Date()).slice(0,5);
   list.innerHTML = upcoming.map(e => {
     const d = new Date(e.date);
     let clickAttr = '';
@@ -1495,6 +1551,7 @@ function googleSignIn() {
       updateGoogleBtn(true);
       await ensureSheetsSetup();
       await syncFromSheets();
+      await fetchGoogleCalendar();
     }
   });
   client.requestAccessToken();
