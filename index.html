@@ -1982,7 +1982,9 @@ function safeParseJSON(str, fallback) {
 //  GMAIL INTEGRATION
 // ============================================================
 let gmailMessages = [];
+let gmailAllMessages = []; // full pool to backfill from
 let selectedEmail = null;
+const GMAIL_VISIBLE = 20; // how many to show at once
 
 async function fetchGmail() {
   if (!googToken) {
@@ -1994,16 +1996,14 @@ async function fetchGmail() {
   btn.textContent = '⟳ Loading…';
   status.textContent = '';
   try {
-    // Get list of messages
-    const listRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&labelIds=INBOX', {
+    const listRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&labelIds=INBOX', {
       headers: { 'Authorization': `Bearer ${googToken}` }
     });
     const listData = await listRes.json();
     if (!listRes.ok) throw new Error(listData.error?.message || 'Gmail API error');
     const messages = listData.messages || [];
 
-    // Fetch each message's details
-    gmailMessages = await Promise.all(messages.map(async m => {
+    gmailAllMessages = await Promise.all(messages.map(async m => {
       const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, {
         headers: { 'Authorization': `Bearer ${googToken}` }
       });
@@ -2017,18 +2017,39 @@ async function fetchGmail() {
         date: get('Date'),
         snippet: msg.snippet || '',
         unread: (msg.labelIds || []).includes('UNREAD'),
-        body: null // loaded on demand
+        body: null
       };
     }));
 
+    // Show first GMAIL_VISIBLE
+    gmailMessages = gmailAllMessages.slice(0, GMAIL_VISIBLE);
     renderGmailList();
-    status.textContent = `${gmailMessages.length} emails loaded`;
+    status.textContent = `${gmailMessages.length} of ${gmailAllMessages.length} emails`;
     btn.textContent = '⟳ Refresh';
   } catch(e) {
     status.textContent = '⚠️ ' + e.message;
     btn.textContent = '⟳ Load Emails';
     console.error('Gmail error:', e);
   }
+}
+
+function deleteGmailItem(idx, e) {
+  e.stopPropagation(); // prevent selecting the email
+  // Remove from visible list
+  gmailMessages.splice(idx, 1);
+  // Backfill from pool if available
+  const nextIdx = gmailAllMessages.findIndex(m => !gmailMessages.includes(m) && m !== gmailAllMessages[idx]);
+  const alreadyShown = new Set(gmailMessages.map(m=>m.id));
+  const next = gmailAllMessages.find(m => !alreadyShown.has(m.id));
+  if (next) gmailMessages.push(next);
+  // Clear selected if it was deleted
+  if (selectedEmail && !gmailMessages.find(m=>m.id===selectedEmail.id)) {
+    selectedEmail = null;
+    document.getElementById('email-result').innerHTML = '<span style="color:var(--warm-gray)">Select an email or paste one to get started…</span>';
+    document.getElementById('email-actions-card').style.display = 'none';
+  }
+  renderGmailList();
+  document.getElementById('gmail-status').textContent = `${gmailMessages.length} of ${gmailAllMessages.length} emails`;
 }
 
 function renderGmailList() {
@@ -2038,10 +2059,13 @@ function renderGmailList() {
     return;
   }
   list.innerHTML = gmailMessages.map((m,i) => `
-    <div class="gmail-item ${m.unread?'unread':''}" onclick="selectEmail(${i})">
+    <div class="gmail-item ${m.unread?'unread':''} ${selectedEmail&&selectedEmail.id===m.id?'selected':''}" onclick="selectEmail(${i})">
       <div class="gmail-meta">
         <span class="gmail-from">${formatEmailFrom(m.from)}</span>
-        <span class="gmail-date">${formatEmailDate(m.date)}</span>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <span class="gmail-date">${formatEmailDate(m.date)}</span>
+          <button onclick="deleteGmailItem(${i}, event)" title="Remove from list" style="background:none;border:none;cursor:pointer;color:var(--warm-gray);font-size:0.9rem;padding:2px 4px;border-radius:4px;line-height:1;transition:all 0.15s" onmouseover="this.style.color='#c0392b'" onmouseout="this.style.color='var(--warm-gray)'">✕</button>
+        </div>
       </div>
       <div class="gmail-subject">${m.subject}</div>
       <div class="gmail-snippet">${m.snippet}</div>
