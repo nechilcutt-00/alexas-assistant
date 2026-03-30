@@ -399,6 +399,32 @@
   .module-row .module-num { font-weight: 600; color: var(--gold); min-width: 28px; }
   .module-row .module-status { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; }
 
+  /* DAY POPUP */
+  .day-popup-overlay {
+    position: fixed; inset: 0; background: rgba(44,44,44,0.3);
+    z-index: 350; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .day-popup-overlay.open { opacity: 1; pointer-events: all; }
+  .day-popup {
+    background: var(--warm-white); border-radius: 18px;
+    padding: 24px; width: 420px; max-width: 95vw;
+    box-shadow: 0 8px 40px var(--shadow-md); max-height: 80vh; overflow-y: auto;
+  }
+  .day-popup-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.3rem; font-weight: 400; margin-bottom: 16px;
+    color: var(--charcoal); display: flex; justify-content: space-between; align-items: center;
+  }
+  .day-popup-event {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px; background: var(--cream); border-radius: 10px;
+    margin-bottom: 8px; cursor: pointer; transition: all 0.15s;
+  }
+  .day-popup-event:hover { background: var(--light-gray); }
+  .day-popup-dot { width: 10px; height: 10px; border-radius: 3px; margin-top: 4px; flex-shrink: 0; }
+  .day-popup-empty { color: var(--warm-gray); font-size: 0.88rem; text-align: center; padding: 20px 0; }
+
   /* ===== EMAIL TRIAGE TAB ===== */
   .email-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   @media (max-width: 768px) { .email-layout { grid-template-columns: 1fr; } }
@@ -563,7 +589,7 @@
       <div class="calendar-grid" id="cal-grid"></div>
     </div>
     <div class="card">
-      <div class="card-title">Upcoming Sessions</div>
+      <div class="card-title">Upcoming Sessions <span style="font-size:0.78rem;color:var(--warm-gray);font-family:'DM Sans',sans-serif;font-weight:400">(next 10)</span></div>
       <div class="upcoming-list" id="upcoming-list"></div>
     </div>
   </div>
@@ -697,6 +723,17 @@
       <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveNewClient()">Save Client</button>
     </div>
+  </div>
+</div>
+
+<!-- DAY POPUP -->
+<div class="day-popup-overlay" id="day-popup-overlay" onclick="closeDayPopup(event)">
+  <div class="day-popup">
+    <div class="day-popup-title">
+      <span id="day-popup-date"></span>
+      <button onclick="closeDayPopup()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--warm-gray)">✕</button>
+    </div>
+    <div id="day-popup-events"></div>
   </div>
 </div>
 
@@ -1037,6 +1074,8 @@ function renderCalendar() {
     const dateStr = new Date(year,month,day).toDateString();
     if(dateStr===today) dayEl.classList.add('today');
     const events = getActiveEvents().filter(e=>e.date===dateStr);
+    dayEl.style.cursor = 'pointer';
+    dayEl.onclick = () => openDayPopup(dateStr, events);
     const numEl = document.createElement('div'); numEl.className='cal-day-num'; numEl.textContent=day;
     dayEl.appendChild(numEl);
     events.slice(0,3).forEach(e => {
@@ -1068,7 +1107,7 @@ const typeColors = {exec:'event-exec',corp:'event-corp',coach:'event-coach',admi
 
 function renderUpcoming() {
   const list = document.getElementById('upcoming-list');
-  const upcoming = getActiveEvents().filter(e=>new Date(e.date)>=new Date()).slice(0,5);
+  const upcoming = getActiveEvents().filter(e=>new Date(e.date)>=new Date()).slice(0,10);
   list.innerHTML = upcoming.map(e => {
     const d = new Date(e.date);
     let clickAttr = '';
@@ -1556,6 +1595,42 @@ function saveLinkedinToClients() {
   alert(`${extractedLinkedin.name || 'Contact'} has been added to your clients! 🎉`);
   document.getElementById('linkedin-save-btn').style.display='none';
   extractedLinkedin = null;
+}
+
+function openDayPopup(dateStr, events) {
+  const d = new Date(dateStr);
+  document.getElementById('day-popup-date').textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  const container = document.getElementById('day-popup-events');
+  const typeColors = {exec:'#dceeff',corp:'#e8f5e9',coach:'#fce4ec',admin:'#fff8e1'};
+  const typeTextColors = {exec:'#1a5c8a',corp:'#2e7d32',coach:'#880e4f',admin:'#7a5c00'};
+  const typeLabels = {exec:'Executive Education',corp:'Corporate Training',coach:'Coaching',admin:'Admin'};
+  if (!events || events.length === 0) {
+    container.innerHTML = '<div class="day-popup-empty">No sessions scheduled for this day.</div>';
+  } else {
+    container.innerHTML = events.map(e => {
+      let action = '';
+      if (e.clientId) action = `onclick="closeDayPopup();switchTab('clients');openClient('${e.clientId}')"`;
+      else if (e.execedId) action = `onclick="closeDayPopup();switchTab('execed');openExecEd('${e.execedId}')"`;
+      const linkHint = e.clientId ? '<span style="font-size:0.72rem;color:var(--sage)">→ View client</span>'
+                     : e.execedId ? '<span style="font-size:0.72rem;color:var(--gold)">→ View program</span>' : '';
+      return `<div class="day-popup-event" ${action}>
+        <div class="day-popup-dot" style="background:${typeColors[e.type]||'#eee'};border:1px solid ${typeTextColors[e.type]||'#ccc'}"></div>
+        <div style="flex:1">
+          <div style="font-size:0.9rem;font-weight:500">${e.title}</div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:3px">
+            <span style="font-size:0.72rem;color:${typeTextColors[e.type]||'var(--warm-gray)'}">${typeLabels[e.type]||''}</span>
+            ${linkHint}
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('day-popup-overlay').classList.add('open');
+}
+
+function closeDayPopup(e) {
+  if (!e || e.target === document.getElementById('day-popup-overlay'))
+    document.getElementById('day-popup-overlay').classList.remove('open');
 }
 
 // ============================================================
