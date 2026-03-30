@@ -532,9 +532,9 @@
   @supports (padding-bottom: env(safe-area-inset-bottom)) {
     .bottom-nav { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
   }
-  .email-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-  @media (max-width: 768px) { .email-layout { grid-template-columns: 1fr; } }
-  .email-result { background: var(--cream); border-radius: 12px; padding: 16px; font-size: 0.88rem; line-height: 1.6; min-height: 200px; white-space: pre-wrap; }
+  .email-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .email-layout { grid-template-columns: 1fr; } }
+  .email-result { background: var(--cream); border-radius: 12px; padding: 16px; font-size: 0.88rem; line-height: 1.6; min-height: 300px; white-space: pre-wrap; }
   .priority-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
   .priority-high { background: #ffecec; color: #c0392b; }
   .priority-medium { background: #fff8e1; color: #7a5c00; }
@@ -794,15 +794,15 @@
           <div class="card-title">AI Analysis</div>
           <div id="email-result" class="email-result" style="color:var(--warm-gray)">Select an email or paste one to get started…</div>
         </div>
-        <div class="card" id="email-actions-card" style="display:none">
+        <div class="card" id="email-actions-card" style="display:none;margin-top:0">
           <div class="card-title">Quick Actions</div>
-          <div style="display:flex;flex-direction:column;gap:10px">
-            <button class="btn btn-secondary" onclick="gmailSaveToClient()">👤 Save to Existing Client</button>
-            <button class="btn btn-secondary" onclick="gmailCreateClient()">➕ Create New Client</button>
-            <button class="btn btn-secondary" onclick="gmailAddSession()">📋 Log as Session</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+            <button class="btn btn-secondary" onclick="gmailSaveToClient()">👤 Save to Client</button>
+            <button class="btn btn-secondary" onclick="gmailCreateClient()">➕ New Client</button>
+            <button class="btn btn-secondary" onclick="gmailAddSession()">📋 Log Session</button>
             <button class="btn btn-gold" onclick="gmailDraftReply()">📧 Draft Reply</button>
           </div>
-          <div id="email-action-result" style="margin-top:14px;font-size:0.85rem;color:var(--sage-dark)"></div>
+          <div id="email-action-result" style="margin-top:12px;font-size:0.85rem;color:var(--sage-dark);min-height:20px"></div>
         </div>
       </div>
     </div>
