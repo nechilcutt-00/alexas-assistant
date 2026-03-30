@@ -1,2 +1,1493 @@
 # alexas-assistant
 Alexa's Assistant
+[index (4).html](https://github.com/user-attachments/files/26337365/index.4.html)
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alexa's Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --cream: #FAF7F2;
+    --warm-white: #FFFEF9;
+    --sage: #7A9E7E;
+    --sage-light: #B8D4BB;
+    --sage-dark: #4A7A52;
+    --blush: #E8C4B8;
+    --blush-dark: #C9987E;
+    --gold: #C9A96E;
+    --gold-light: #E8D5A3;
+    --charcoal: #2C2C2C;
+    --warm-gray: #6B6560;
+    --light-gray: #EDE9E3;
+    --border: #DDD8CF;
+    --shadow: rgba(44,44,44,0.08);
+    --shadow-md: rgba(44,44,44,0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--charcoal);
+    min-height: 100vh;
+  }
+
+  /* PIN SCREEN */
+  #pin-screen {
+    position: fixed; inset: 0;
+    background: var(--cream);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 1000;
+    gap: 32px;
+  }
+  #pin-screen h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.8rem; font-weight: 300;
+    color: var(--charcoal); letter-spacing: 0.02em;
+  }
+  #pin-screen p { color: var(--warm-gray); font-size: 0.95rem; }
+  .pin-dots { display: flex; gap: 14px; margin: 8px 0; }
+  .pin-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    transition: all 0.2s;
+  }
+  .pin-dot.filled { background: var(--sage); border-color: var(--sage); }
+  .pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; }
+  .pin-btn {
+    width: 68px; height: 68px; border-radius: 50%;
+    border: 1.5px solid var(--border);
+    background: var(--warm-white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1.3rem; font-weight: 400;
+    color: var(--charcoal); cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+  .pin-btn:hover { background: var(--light-gray); border-color: var(--sage); }
+  .pin-btn:active { transform: scale(0.95); }
+  .pin-btn.clear { font-size: 0.85rem; color: var(--warm-gray); }
+  #pin-error { color: #c0392b; font-size: 0.85rem; min-height: 20px; }
+
+  /* HEADER */
+  header {
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 64px;
+    position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  .logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.6rem; font-weight: 400;
+    color: var(--charcoal); letter-spacing: 0.03em;
+  }
+  .logo span { color: var(--sage); }
+  .header-date { color: var(--warm-gray); font-size: 0.85rem; }
+
+  /* TABS */
+  nav {
+    background: var(--warm-white);
+    border-bottom: 1px solid var(--border);
+    display: flex; overflow-x: auto;
+    padding: 0 28px;
+  }
+  nav::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 14px 22px;
+    font-size: 0.88rem; font-weight: 500;
+    color: var(--warm-gray);
+    border-bottom: 2.5px solid transparent;
+    cursor: pointer; white-space: nowrap;
+    transition: all 0.2s; letter-spacing: 0.02em;
+  }
+  .tab:hover { color: var(--sage); }
+  .tab.active { color: var(--sage-dark); border-bottom-color: var(--sage); }
+
+  /* MAIN */
+  main { padding: 28px; max-width: 1100px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* CARDS */
+  .card {
+    background: var(--warm-white);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 2px 12px var(--shadow);
+    margin-bottom: 20px;
+  }
+  .card-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.25rem; font-weight: 500;
+    color: var(--charcoal); margin-bottom: 16px;
+  }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 22px; border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem; font-weight: 500;
+    cursor: pointer; transition: all 0.2s;
+    border: 1.5px solid transparent; display: inline-flex;
+    align-items: center; gap: 8px;
+  }
+  .btn-primary { background: var(--sage); color: white; }
+  .btn-primary:hover { background: var(--sage-dark); }
+  .btn-secondary { background: transparent; border-color: var(--border); color: var(--warm-gray); }
+  .btn-secondary:hover { border-color: var(--sage); color: var(--sage); }
+  .btn-gold { background: var(--gold); color: white; }
+  .btn-gold:hover { background: var(--blush-dark); }
+  .btn-sm { padding: 7px 14px; font-size: 0.82rem; border-radius: 8px; }
+
+  /* INPUTS */
+  input, textarea, select {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem; color: var(--charcoal);
+    background: var(--cream); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 10px 14px;
+    width: 100%; outline: none;
+    transition: border-color 0.2s;
+  }
+  input:focus, textarea:focus, select:focus { border-color: var(--sage); }
+  textarea { resize: vertical; min-height: 100px; }
+  label { font-size: 0.82rem; color: var(--warm-gray); display: block; margin-bottom: 5px; font-weight: 500; letter-spacing: 0.03em; }
+  .form-group { margin-bottom: 14px; }
+
+  /* ===== AI ASSISTANT TAB ===== */
+  .ai-layout { display: grid; grid-template-columns: 1fr 320px; gap: 20px; }
+  @media (max-width: 768px) { .ai-layout { grid-template-columns: 1fr; } }
+
+  #chat-messages {
+    min-height: 360px; max-height: 480px;
+    overflow-y: auto; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    background: var(--cream); border-radius: 12px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .message { display: flex; gap: 10px; max-width: 85%; }
+  .message.user { align-self: flex-end; flex-direction: row-reverse; }
+  .message-bubble {
+    padding: 10px 14px; border-radius: 14px;
+    font-size: 0.9rem; line-height: 1.5;
+  }
+  .message.assistant .message-bubble {
+    background: var(--warm-white); border: 1px solid var(--border);
+    color: var(--charcoal);
+  }
+  .message.user .message-bubble { background: var(--sage); color: white; }
+  .message-avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem; font-weight: 600; flex-shrink: 0;
+  }
+  .message.assistant .message-avatar { background: var(--sage-light); color: var(--sage-dark); }
+  .message.user .message-avatar { background: var(--blush); color: var(--blush-dark); }
+
+  .chat-input-row { display: flex; gap: 10px; align-items: flex-end; }
+  .chat-input-row textarea { min-height: 48px; max-height: 120px; }
+  #voice-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    border: 1.5px solid var(--border); background: var(--warm-white);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0; transition: all 0.2s;
+  }
+  #voice-btn:hover { border-color: var(--sage); }
+  #voice-btn.recording { background: #fff0ee; border-color: var(--blush-dark); animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(201,152,126,0.3); } 50% { box-shadow: 0 0 0 8px rgba(201,152,126,0); } }
+
+  .quick-prompts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .quick-prompt {
+    padding: 6px 14px; border-radius: 20px;
+    border: 1.5px solid var(--border); background: var(--warm-white);
+    font-size: 0.8rem; color: var(--warm-gray);
+    cursor: pointer; transition: all 0.15s; font-family: 'DM Sans', sans-serif;
+  }
+  .quick-prompt:hover { border-color: var(--sage); color: var(--sage); background: #f0f7f0; }
+
+  .ai-sidebar .card { margin-bottom: 16px; }
+
+  /* API Key notice */
+  .api-notice {
+    background: #fff8e7; border: 1px solid var(--gold-light);
+    border-radius: 10px; padding: 12px 16px;
+    font-size: 0.82rem; color: #7a6030; margin-bottom: 14px;
+  }
+
+  /* ===== SCHEDULE TAB ===== */
+  .calendar-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .calendar-title { font-family: 'Cormorant Garamond', serif; font-size: 1.5rem; font-weight: 400; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; background: var(--border); border-radius: 12px; overflow: hidden; }
+  .cal-day-header {
+    background: var(--warm-white); padding: 10px 6px;
+    text-align: center; font-size: 0.78rem; font-weight: 600;
+    color: var(--warm-gray); letter-spacing: 0.05em; text-transform: uppercase;
+  }
+  .cal-day {
+    background: var(--warm-white); min-height: 90px;
+    padding: 8px 6px; position: relative;
+  }
+  .cal-day.other-month { background: var(--cream); opacity: 0.5; }
+  .cal-day.today { background: #f0f7f0; }
+  .cal-day-num {
+    font-size: 0.82rem; font-weight: 500; color: var(--warm-gray);
+    margin-bottom: 4px;
+  }
+  .cal-day.today .cal-day-num { color: var(--sage-dark); font-weight: 700; }
+  .cal-event {
+    font-size: 0.72rem; padding: 2px 6px; border-radius: 4px;
+    margin-bottom: 2px; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    transition: opacity 0.15s;
+  }
+  .cal-event:hover { opacity: 0.75; }
+  .event-exec { background: #dceeff; color: #1a5c8a; }
+  .event-corp { background: #e8f5e9; color: #2e7d32; }
+  .event-coach { background: #fce4ec; color: #880e4f; }
+  .event-admin { background: #fff8e1; color: #7a5c00; }
+
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--warm-gray); }
+  .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+  .upcoming-list { display: flex; flex-direction: column; gap: 10px; }
+  .upcoming-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 12px; background: var(--cream); border-radius: 10px;
+  }
+  .upcoming-date { text-align: center; min-width: 42px; }
+  .upcoming-date .day-num { font-size: 1.3rem; font-weight: 600; color: var(--sage-dark); line-height: 1; }
+  .upcoming-date .day-name { font-size: 0.72rem; color: var(--warm-gray); text-transform: uppercase; letter-spacing: 0.05em; }
+  .upcoming-info .title { font-size: 0.9rem; font-weight: 500; }
+  .upcoming-info .meta { font-size: 0.78rem; color: var(--warm-gray); margin-top: 2px; }
+  .type-badge {
+    font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; font-weight: 500;
+    display: inline-block; margin-top: 4px;
+  }
+
+  /* ===== CLIENTS TAB ===== */
+  .clients-toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+  .clients-toolbar input { flex: 1; }
+  .client-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap: 16px; }
+  .client-card {
+    background: var(--warm-white); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 2px 8px var(--shadow);
+  }
+  .client-card:hover { border-color: var(--sage); box-shadow: 0 4px 20px var(--shadow-md); transform: translateY(-2px); }
+  .client-avatar {
+    width: 46px; height: 46px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; font-weight: 600; color: white; margin-bottom: 12px;
+  }
+  .client-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
+  .client-type { font-size: 0.78rem; color: var(--warm-gray); }
+  .client-stats { display: flex; gap: 12px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .stat-item { text-align: center; }
+  .stat-num { font-size: 1rem; font-weight: 600; color: var(--sage-dark); }
+  .stat-label { font-size: 0.7rem; color: var(--warm-gray); }
+
+  /* CLIENT DRAWER */
+  .drawer-overlay {
+    position: fixed; inset: 0; background: rgba(44,44,44,0.3);
+    z-index: 200; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s;
+  }
+  .drawer-overlay.open { opacity: 1; pointer-events: all; }
+  .drawer {
+    position: fixed; right: 0; top: 0; bottom: 0;
+    width: 480px; max-width: 95vw;
+    background: var(--warm-white); z-index: 201;
+    transform: translateX(100%); transition: transform 0.3s ease;
+    overflow-y: auto; box-shadow: -4px 0 30px var(--shadow-md);
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-header {
+    padding: 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 16px; position: sticky; top: 0;
+    background: var(--warm-white); z-index: 1;
+  }
+  .drawer-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--warm-gray); margin-left: auto; }
+  .drawer-body { padding: 24px; }
+  .drawer-section { margin-bottom: 24px; }
+  .drawer-section-title { font-size: 0.78rem; font-weight: 600; color: var(--warm-gray); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .info-item label { margin-bottom: 3px; }
+  .info-item .value { font-size: 0.9rem; padding: 8px 12px; background: var(--cream); border-radius: 8px; cursor: pointer; border: 1px solid transparent; transition: border-color 0.2s; min-height: 34px; }
+  .info-item .value:hover { border-color: var(--sage-light); }
+  .info-item .value[contenteditable="true"] { border-color: var(--sage); outline: none; }
+  .session-history { display: flex; flex-direction: column; gap: 8px; }
+  .session-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: var(--cream); border-radius: 8px; font-size: 0.85rem; }
+  .notes-area { width: 100%; min-height: 100px; }
+
+  /* ADD CLIENT MODAL */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(44,44,44,0.4);
+    z-index: 300; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--warm-white); border-radius: 18px;
+    padding: 28px; width: 480px; max-width: 95vw;
+    box-shadow: 0 8px 40px var(--shadow-md); max-height: 90vh; overflow-y: auto;
+  }
+  .modal-title { font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; margin-bottom: 20px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+  /* ===== EXEC ED TAB ===== */
+  .execed-toolbar { display: flex; gap: 12px; margin-bottom: 20px; align-items: center; }
+  .execed-toolbar input { flex: 1; }
+  .execed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); gap: 16px; }
+  .execed-card {
+    background: var(--warm-white); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px; cursor: pointer;
+    transition: all 0.2s; box-shadow: 0 2px 8px var(--shadow);
+    border-left: 4px solid var(--gold);
+  }
+  .execed-card:hover { border-color: var(--gold); box-shadow: 0 4px 20px var(--shadow-md); transform: translateY(-2px); }
+  .execed-icon {
+    width: 46px; height: 46px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; margin-bottom: 12px;
+    background: #fff8e7; border: 1px solid var(--gold-light);
+  }
+  .execed-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 3px; }
+  .execed-inst { font-size: 0.78rem; color: var(--warm-gray); margin-bottom: 10px; }
+  .execed-meta { display: flex; gap: 12px; padding-top: 10px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .execed-meta-item { font-size: 0.75rem; color: var(--warm-gray); display: flex; align-items: center; gap: 4px; }
+  .execed-status {
+    display: inline-block; font-size: 0.7rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 10px; margin-bottom: 8px;
+  }
+  .status-active { background: #e8f5e9; color: #2e7d32; }
+  .status-upcoming { background: #dceeff; color: #1a5c8a; }
+  .status-completed { background: var(--light-gray); color: var(--warm-gray); }
+
+  /* EXEC ED DRAWER */
+  .execed-drawer {
+    position: fixed; right: 0; top: 0; bottom: 0;
+    width: 520px; max-width: 95vw;
+    background: var(--warm-white); z-index: 201;
+    transform: translateX(100%); transition: transform 0.3s ease;
+    overflow-y: auto; box-shadow: -4px 0 30px var(--shadow-md);
+  }
+  .execed-drawer.open { transform: translateX(0); }
+  .execed-drawer-header {
+    padding: 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: flex-start; gap: 16px; position: sticky; top: 0;
+    background: var(--warm-white); z-index: 1;
+  }
+  .module-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 12px; background: var(--cream); border-radius: 8px;
+    font-size: 0.85rem; margin-bottom: 6px;
+  }
+  .module-row .module-num { font-weight: 600; color: var(--gold); min-width: 28px; }
+  .module-row .module-status { font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; }
+
+  /* ===== EMAIL TRIAGE TAB ===== */
+  .email-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .email-layout { grid-template-columns: 1fr; } }
+  .email-result { background: var(--cream); border-radius: 12px; padding: 16px; font-size: 0.88rem; line-height: 1.6; min-height: 200px; white-space: pre-wrap; }
+  .priority-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; }
+  .priority-high { background: #ffecec; color: #c0392b; }
+  .priority-medium { background: #fff8e1; color: #7a5c00; }
+  .priority-low { background: #f0f7f0; color: #2e7d32; }
+
+  /* ===== LINKEDIN TAB ===== */
+  .linkedin-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .linkedin-layout { grid-template-columns: 1fr; } }
+  .extracted-field { background: var(--cream); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .extracted-field label { color: var(--sage-dark); }
+  .extracted-value { font-size: 0.9rem; margin-top: 4px; }
+
+  /* LOADING */
+  .loading { display: flex; gap: 6px; align-items: center; padding: 12px; }
+  .loading-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage-light); animation: bounce 1.2s infinite ease-in-out; }
+  .loading-dot:nth-child(2) { animation-delay: 0.15s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.6); opacity: 0.4; } 40% { transform: scale(1); opacity: 1; } }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div style="text-align:center">
+    <h1>Alexa's Assistant ✦</h1>
+    <p>Enter your PIN to continue</p>
+  </div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-keypad">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn clear" onclick="pinClear()">Clear</button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn clear" onclick="pinBackspace()">⌫</button>
+  </div>
+  <div id="pin-error"></div>
+  <p style="font-size:0.78rem;color:var(--warm-gray)">First time? Your PIN will be set on first entry.</p>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">Alexa's <span>Assistant</span></div>
+  <div class="header-date" id="header-date"></div>
+</header>
+
+<!-- TABS -->
+<nav>
+  <div class="tab active" onclick="switchTab('ai')">✦ AI Assistant</div>
+  <div class="tab" onclick="switchTab('schedule')">📅 Schedule</div>
+  <div class="tab" onclick="switchTab('clients')">👤 Clients</div>
+  <div class="tab" onclick="switchTab('execed')">🎓 Exec Ed</div>
+  <div class="tab" onclick="switchTab('email')">📧 Email Triage</div>
+  <div class="tab" onclick="switchTab('linkedin')">💼 LinkedIn</div>
+</nav>
+
+<!-- MAIN -->
+<main>
+
+  <!-- AI ASSISTANT -->
+  <div class="tab-content active" id="tab-ai">
+    <div class="ai-layout">
+      <div>
+        <div class="card" style="padding:16px">
+          <div id="chat-messages">
+            <div class="message assistant">
+              <div class="message-avatar">A</div>
+              <div class="message-bubble">Good morning! I'm your assistant. How can I help you today? You can ask me to draft emails, prepare for sessions, brainstorm ideas, or anything else on your mind. 🌿</div>
+            </div>
+          </div>
+          <div class="chat-input-row">
+            <textarea id="chat-input" placeholder="Ask me anything…" rows="1" onkeydown="handleChatKey(event)"></textarea>
+            <button id="voice-btn" onclick="toggleVoice()" title="Voice input">🎤</button>
+            <button class="btn btn-primary" onclick="sendChat()">Send</button>
+          </div>
+          <div class="quick-prompts">
+            <button class="quick-prompt" onclick="quickPrompt('Help me prepare talking points for a coaching session')">🗣 Session prep</button>
+            <button class="quick-prompt" onclick="quickPrompt('Draft a follow-up email for a client')">📧 Draft email</button>
+            <button class="quick-prompt" onclick="quickPrompt('Help me outline a corporate training module')">📋 Training outline</button>
+            <button class="quick-prompt" onclick="quickPrompt('What should I prioritize today?')">⭐ Daily priorities</button>
+            <button class="quick-prompt" onclick="quickPrompt('Help me write a LinkedIn post about leadership')">💼 LinkedIn post</button>
+          </div>
+        </div>
+      </div>
+      <div class="ai-sidebar">
+        <div class="card">
+          <div class="card-title">Today's Focus</div>
+          <div id="todays-focus" style="font-size:0.88rem;color:var(--warm-gray);line-height:1.6">
+            3 coaching sessions<br>
+            1 corporate follow-up<br>
+            LinkedIn outreach × 2
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Quick Stats</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;font-size:0.88rem">
+              <span style="color:var(--warm-gray)">Active Clients</span>
+              <strong id="stat-clients">0</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.88rem">
+              <span style="color:var(--warm-gray)">This Month Sessions</span>
+              <strong>18</strong>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:0.88rem">
+              <span style="color:var(--warm-gray)">Pending Follow-ups</span>
+              <strong style="color:var(--blush-dark)">4</strong>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Context for AI</div>
+          <textarea id="ai-context" style="font-size:0.82rem;min-height:80px" placeholder="Add context for AI responses (e.g. client name, session topic)…"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE -->
+  <div class="tab-content" id="tab-schedule">
+    <div class="card">
+      <div class="calendar-header">
+        <button class="btn btn-secondary btn-sm" onclick="changeMonth(-1)">← Prev</button>
+        <div class="calendar-title" id="cal-month-title"></div>
+        <button class="btn btn-secondary btn-sm" onclick="changeMonth(1)">Next →</button>
+      </div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot event-exec"></div>Executive Education</div>
+        <div class="legend-item"><div class="legend-dot event-corp"></div>Corporate Training</div>
+        <div class="legend-item"><div class="legend-dot event-coach"></div>Coaching</div>
+        <div class="legend-item"><div class="legend-dot event-admin"></div>Admin/Planning</div>
+      </div>
+      <div class="calendar-grid" id="cal-grid"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Upcoming Sessions</div>
+      <div class="upcoming-list" id="upcoming-list"></div>
+    </div>
+  </div>
+
+  <!-- CLIENTS -->
+  <div class="tab-content" id="tab-clients">
+    <div class="clients-toolbar">
+      <input type="text" id="client-search" placeholder="Search clients…" oninput="renderClients()">
+      <button class="btn btn-primary" onclick="openAddClient()">+ Add Client</button>
+    </div>
+    <div class="client-grid" id="client-grid"></div>
+  </div>
+
+  <!-- EXEC ED -->
+  <div class="tab-content" id="tab-execed">
+    <div class="execed-toolbar">
+      <input type="text" id="execed-search" placeholder="Search programs…" oninput="renderExecEd()">
+      <button class="btn btn-primary" onclick="openAddExecEd()">+ Add Program</button>
+    </div>
+    <div class="execed-grid" id="execed-grid"></div>
+  </div>
+
+  <!-- EMAIL TRIAGE -->
+  <div class="tab-content" id="tab-email">
+    <div class="email-layout">
+      <div class="card">
+        <div class="card-title">Paste Email Content</div>
+        <textarea id="email-input" placeholder="Paste the email you want to triage or draft a reply to…" style="min-height:200px;margin-bottom:14px"></textarea>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="analyzeEmail()">Analyze & Prioritize</button>
+          <button class="btn btn-secondary" onclick="draftReply()">Draft Reply</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">AI Analysis</div>
+        <div id="email-result" class="email-result" style="color:var(--warm-gray)">Your email analysis will appear here…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LINKEDIN -->
+  <div class="tab-content" id="tab-linkedin">
+    <div class="linkedin-layout">
+      <div class="card">
+        <div class="card-title">Paste LinkedIn Profile</div>
+        <textarea id="linkedin-input" placeholder="Paste a LinkedIn profile or message thread here…" style="min-height:200px;margin-bottom:14px"></textarea>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary" onclick="extractLinkedin()">Extract Info</button>
+          <button class="btn btn-secondary" onclick="draftLinkedinMsg()">Draft Message</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Extracted Information</div>
+        <div id="linkedin-result">
+          <p style="color:var(--warm-gray);font-size:0.88rem">Paste a LinkedIn profile to extract contact details and add them to your client list.</p>
+        </div>
+        <div id="linkedin-save-btn" style="margin-top:14px;display:none">
+          <button class="btn btn-gold" onclick="saveLinkedinToClients()">Save to Clients</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- CLIENT DRAWER -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer(); closeExecEdDrawer();"></div>
+<div class="drawer" id="client-drawer">
+  <div class="drawer-header">
+    <div class="client-avatar" id="drawer-avatar" style="background:#7A9E7E;font-size:1.2rem"></div>
+    <div>
+      <div style="font-weight:600;font-size:1.05rem" id="drawer-name"></div>
+      <div style="font-size:0.82rem;color:var(--warm-gray)" id="drawer-type"></div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <div class="drawer-section-title">Session Stats</div>
+      <div style="display:flex;gap:20px">
+        <div class="stat-item"><div class="stat-num" id="drawer-total-sessions">0</div><div class="stat-label">Total Sessions</div></div>
+        <div class="stat-item"><div class="stat-num" id="drawer-this-month">0</div><div class="stat-label">This Month</div></div>
+        <div class="stat-item"><div class="stat-num" id="drawer-next-session">—</div><div class="stat-label">Next Session</div></div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Contact Info <span style="font-size:0.7rem;color:var(--sage)">(click to edit)</span></div>
+      <div class="info-grid">
+        <div class="info-item"><label>Email</label><div class="value" id="de-email" contenteditable="true" onblur="saveDrawerField('email',this)"></div></div>
+        <div class="info-item"><label>Phone</label><div class="value" id="de-phone" contenteditable="true" onblur="saveDrawerField('phone',this)"></div></div>
+        <div class="info-item"><label>Company</label><div class="value" id="de-company" contenteditable="true" onblur="saveDrawerField('company',this)"></div></div>
+        <div class="info-item"><label>Role / Title</label><div class="value" id="de-role" contenteditable="true" onblur="saveDrawerField('role',this)"></div></div>
+        <div class="info-item"><label>LinkedIn</label><div class="value" id="de-linkedin" contenteditable="true" onblur="saveDrawerField('linkedin',this)"></div></div>
+        <div class="info-item"><label>Next Session</label><div class="value" id="de-next" contenteditable="true" onblur="saveDrawerField('next',this)"></div></div>
+      </div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Session History</div>
+      <div class="session-history" id="drawer-sessions"></div>
+    </div>
+    <div class="drawer-section">
+      <div class="drawer-section-title">Notes</div>
+      <textarea class="notes-area" id="drawer-notes" placeholder="Personal notes, goals, follow-ups…" onblur="saveDrawerNotes()"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:10px">
+      <button class="btn btn-secondary btn-sm" onclick="aiSessionPrep()">✦ Session Prep</button>
+      <button class="btn btn-secondary btn-sm" onclick="aiDraftFollowup()">📧 Draft Follow-up</button>
+      <button class="btn btn-secondary btn-sm" style="color:#c0392b;border-color:#c0392b" onclick="deleteCurrentClient()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CLIENT MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">Add New Client</div>
+    <div class="form-group"><label>Full Name *</label><input id="new-name" placeholder="Jane Smith"></div>
+    <div class="form-group"><label>Client Type</label>
+      <select id="new-type">
+        <option>Coaching</option>
+        <option>Corporate Training</option>
+        <option>Executive Education</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Email</label><input id="new-email" placeholder="jane@company.com"></div>
+    <div class="form-group"><label>Phone</label><input id="new-phone" placeholder="+1 (555) 000-0000"></div>
+    <div class="form-group"><label>Company</label><input id="new-company" placeholder="Company Inc."></div>
+    <div class="form-group"><label>Role / Title</label><input id="new-role" placeholder="VP of Operations"></div>
+    <div class="form-group"><label>Notes</label><textarea id="new-notes" placeholder="How you met, goals, context…" style="min-height:70px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewClient()">Save Client</button>
+    </div>
+  </div>
+</div>
+
+<!-- EXEC ED DRAWER -->
+<div class="execed-drawer" id="execed-drawer">
+  <div class="execed-drawer-header">
+    <div class="execed-icon" id="eed-icon">🎓</div>
+    <div style="flex:1">
+      <div style="font-weight:600;font-size:1.05rem" id="eed-name"></div>
+      <div style="font-size:0.82rem;color:var(--warm-gray)" id="eed-institution"></div>
+      <div id="eed-status-badge" style="margin-top:6px"></div>
+    </div>
+    <button class="drawer-close" onclick="closeExecEdDrawer()">✕</button>
+  </div>
+  <div class="drawer-body">
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Program Stats</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap">
+        <div class="stat-item"><div class="stat-num" id="eed-cohort">—</div><div class="stat-label">Cohort Size</div></div>
+        <div class="stat-item"><div class="stat-num" id="eed-modules-done">—</div><div class="stat-label">Modules Done</div></div>
+        <div class="stat-item"><div class="stat-num" id="eed-modules-total">—</div><div class="stat-label">Total Modules</div></div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Program Details <span style="font-size:0.7rem;color:var(--sage)">(click to edit)</span></div>
+      <div class="info-grid">
+        <div class="info-item"><label>Institution</label><div class="value" id="eed-inst-field" contenteditable="true" onblur="saveExecEdField('institution',this)"></div></div>
+        <div class="info-item"><label>Program Name</label><div class="value" id="eed-prog-field" contenteditable="true" onblur="saveExecEdField('program',this)"></div></div>
+        <div class="info-item"><label>Primary Contact</label><div class="value" id="eed-contact-field" contenteditable="true" onblur="saveExecEdField('contact',this)"></div></div>
+        <div class="info-item"><label>Contact Email</label><div class="value" id="eed-email-field" contenteditable="true" onblur="saveExecEdField('email',this)"></div></div>
+        <div class="info-item"><label>Start Date</label><div class="value" id="eed-start-field" contenteditable="true" onblur="saveExecEdField('startDate',this)"></div></div>
+        <div class="info-item"><label>End Date</label><div class="value" id="eed-end-field" contenteditable="true" onblur="saveExecEdField('endDate',this)"></div></div>
+        <div class="info-item"><label>Cohort Size</label><div class="value" id="eed-cohort-field" contenteditable="true" onblur="saveExecEdField('cohortSize',this)"></div></div>
+        <div class="info-item"><label>Status</label>
+          <select id="eed-status-field" onchange="saveExecEdStatus()" style="font-size:0.88rem;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--cream)">
+            <option value="upcoming">Upcoming</option>
+            <option value="active">Active</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Modules</div>
+      <div id="eed-modules-list"></div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="addModule()">+ Add Module</button>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Notes & Goals</div>
+      <textarea class="notes-area" id="eed-notes" placeholder="Program goals, logistics, key contacts, follow-up items…" onblur="saveExecEdNotes()"></textarea>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="aiModulePrep()">✦ Module Prep</button>
+      <button class="btn btn-secondary btn-sm" onclick="aiExecEdFollowup()">📧 Draft Follow-up</button>
+      <button class="btn btn-secondary btn-sm" style="color:#c0392b;border-color:#c0392b" onclick="deleteCurrentExecEd()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EXEC ED MODAL -->
+<div class="modal-overlay" id="execed-modal-overlay" onclick="closeExecEdModal(event)">
+  <div class="modal">
+    <div class="modal-title">Add Executive Education Program</div>
+    <div class="form-group"><label>Program Name *</label><input id="new-eed-name" placeholder="Leadership Excellence Program"></div>
+    <div class="form-group"><label>Institution / Organization</label><input id="new-eed-inst" placeholder="State University, Corporate Academy…"></div>
+    <div class="form-group"><label>Primary Contact</label><input id="new-eed-contact" placeholder="Dr. Jane Smith"></div>
+    <div class="form-group"><label>Contact Email</label><input id="new-eed-email" placeholder="jsmith@university.edu"></div>
+    <div class="form-group"><label>Start Date</label><input id="new-eed-start" placeholder="Apr 15, 2025"></div>
+    <div class="form-group"><label>End Date</label><input id="new-eed-end" placeholder="Jun 30, 2025"></div>
+    <div class="form-group"><label>Cohort Size</label><input id="new-eed-cohort" placeholder="24" type="number"></div>
+    <div class="form-group"><label>Status</label>
+      <select id="new-eed-status">
+        <option value="upcoming">Upcoming</option>
+        <option value="active">Active</option>
+        <option value="completed">Completed</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Notes</label><textarea id="new-eed-notes" placeholder="Program overview, goals, key details…" style="min-height:70px"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeExecEdModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNewExecEd()">Save Program</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CONFIG — API calls route through Cloudflare Worker (no key in code)
+// ============================================================
+const WORKER_URL = 'https://alexas-assistant.nechilcutt.workers.dev';
+
+// ============================================================
+//  PIN SYSTEM
+// ============================================================
+let pinBuffer = '';
+const STORAGE_PIN_KEY = 'aa_pin';
+
+function pinPress(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  updatePinDots();
+  if (pinBuffer.length === 4) setTimeout(checkPin, 150);
+}
+function pinBackspace() { pinBuffer = pinBuffer.slice(0,-1); updatePinDots(); }
+function pinClear() { pinBuffer = ''; updatePinDots(); }
+function updatePinDots() {
+  for(let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled', i < pinBuffer.length);
+}
+function checkPin() {
+  const stored = localStorage.getItem(STORAGE_PIN_KEY);
+  if (!stored) { localStorage.setItem(STORAGE_PIN_KEY, pinBuffer); unlockApp(); }
+  else if (pinBuffer === stored) { unlockApp(); }
+  else { document.getElementById('pin-error').textContent = 'Incorrect PIN. Try again.'; pinBuffer = ''; updatePinDots(); }
+}
+function unlockApp() { document.getElementById('pin-screen').style.display = 'none'; initApp(); }
+
+// ============================================================
+//  INIT
+// ============================================================
+function initApp() {
+  document.getElementById('header-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  loadClients();
+  loadExecEd();
+  renderCalendar();
+  renderUpcoming();
+  document.getElementById('stat-clients').textContent = getClients().length;
+}
+
+// ============================================================
+//  TABS
+// ============================================================
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelector(`[onclick="switchTab('${id}')"]`).classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// ============================================================
+//  AI CHAT
+// ============================================================
+let chatHistory = [];
+
+async function sendChat() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  appendMessage('user', text);
+  chatHistory.push({role:'user', content: text});
+  const loadingEl = appendLoading();
+  try {
+    const context = document.getElementById('ai-context').value;
+    const systemPrompt = `You are a warm, professional AI assistant for Alexa, who runs a professional services business spanning executive education, corporate training, and individual coaching. Help her manage client relationships, prepare for sessions, draft communications, and organize her work day. Be concise, practical, and encouraging.${context ? '\n\nCurrent context: ' + context : ''}`;
+    const response = await callClaude(systemPrompt, chatHistory);
+    loadingEl.remove();
+    appendMessage('assistant', response);
+    chatHistory.push({role:'assistant', content: response});
+  } catch(e) {
+    loadingEl.remove();
+    appendMessage('assistant', '⚠️ Could not connect to AI. Error: ' + e.message);
+    console.error('AI Error:', e);
+  }
+}
+
+function handleChatKey(e) { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+function quickPrompt(text) { document.getElementById('chat-input').value = text; sendChat(); }
+
+function appendMessage(role, text) {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = `message ${role}`;
+  div.innerHTML = `<div class="message-avatar">${role==='user'?'You':'A'}</div><div class="message-bubble">${text.replace(/\n/g,'<br>')}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+function appendLoading() {
+  const msgs = document.getElementById('chat-messages');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.innerHTML = `<div class="message-avatar">A</div><div class="message-bubble loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+// ============================================================
+//  VOICE INPUT
+// ============================================================
+let recognition = null;
+function toggleVoice() {
+  const btn = document.getElementById('voice-btn');
+  if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+    alert('Voice input is not supported in this browser. Try Chrome.');
+    return;
+  }
+  if (recognition) { recognition.stop(); recognition = null; btn.classList.remove('recording'); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.continuous = false; recognition.interimResults = false;
+  recognition.onresult = e => { document.getElementById('chat-input').value = e.results[0][0].transcript; recognition = null; btn.classList.remove('recording'); };
+  recognition.onerror = () => { recognition = null; btn.classList.remove('recording'); };
+  recognition.onend = () => { recognition = null; btn.classList.remove('recording'); };
+  recognition.start();
+  btn.classList.add('recording');
+}
+
+// ============================================================
+//  CALENDAR
+// ============================================================
+let calDate = new Date();
+
+function offset(days) {
+  const d = new Date(); d.setDate(d.getDate()+days);
+  return d.toDateString();
+}
+
+const sampleEvents = [
+  { date: offset(0), title: 'Coaching: Sarah M.', type: 'coach', clientId: 'c1', execedId: null },
+  { date: offset(0), title: 'Team call', type: 'admin', clientId: null, execedId: null },
+  { date: offset(1), title: 'Corp Training: Acme', type: 'corp', clientId: 'c3', execedId: null },
+  { date: offset(3), title: 'Exec Ed: Module 4', type: 'exec', clientId: null, execedId: 'e1' },
+  { date: offset(5), title: 'Coaching: Tom R.', type: 'coach', clientId: 'c2', execedId: null },
+  { date: offset(7), title: 'Corp Training: BV Group', type: 'corp', clientId: 'c5', execedId: null },
+  { date: offset(10), title: 'Coaching: Lisa K.', type: 'coach', clientId: 'c4', execedId: null },
+  { date: offset(12), title: 'Exec Ed: Module 5', type: 'exec', clientId: null, execedId: 'e1' },
+  { date: offset(14), title: 'Planning Session', type: 'admin', clientId: null, execedId: null },
+  { date: offset(15), title: 'Coaching: Amy W.', type: 'coach', clientId: 'c6', execedId: null },
+  { date: offset(18), title: 'Corp Training: Meridian', type: 'corp', clientId: null, execedId: null },
+  { date: offset(21), title: 'Exec Ed: Module 6', type: 'exec', clientId: null, execedId: 'e2' },
+];
+
+function renderCalendar() {
+  const year = calDate.getFullYear(), month = calDate.getMonth();
+  document.getElementById('cal-month-title').textContent = new Date(year,month,1).toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d => {
+    const h = document.createElement('div'); h.className='cal-day-header'; h.textContent=d; grid.appendChild(h);
+  });
+  const firstDay = new Date(year,month,1).getDay();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  const daysInPrev = new Date(year,month,0).getDate();
+  const today = new Date().toDateString();
+  for(let i=0;i<firstDay;i++) {
+    const d = document.createElement('div'); d.className='cal-day other-month';
+    d.innerHTML=`<div class="cal-day-num">${daysInPrev-firstDay+i+1}</div>`; grid.appendChild(d);
+  }
+  for(let day=1;day<=daysInMonth;day++) {
+    const dayEl = document.createElement('div'); dayEl.className='cal-day';
+    const dateStr = new Date(year,month,day).toDateString();
+    if(dateStr===today) dayEl.classList.add('today');
+    const events = sampleEvents.filter(e=>e.date===dateStr);
+    const numEl = document.createElement('div'); numEl.className='cal-day-num'; numEl.textContent=day;
+    dayEl.appendChild(numEl);
+    events.slice(0,3).forEach(e => {
+      const evEl = document.createElement('div');
+      evEl.className = `cal-event event-${e.type}`;
+      evEl.textContent = e.title;
+      if (e.clientId) {
+        evEl.title = 'Click to view client';
+        evEl.onclick = (ev) => { ev.stopPropagation(); switchTab('clients'); openClient(e.clientId); };
+      } else if (e.execedId) {
+        evEl.title = 'Click to view program';
+        evEl.onclick = (ev) => { ev.stopPropagation(); switchTab('execed'); openExecEd(e.execedId); };
+      }
+      dayEl.appendChild(evEl);
+    });
+    grid.appendChild(dayEl);
+  }
+  const remaining = 42 - firstDay - daysInMonth;
+  for(let i=1;i<=remaining;i++) {
+    const d = document.createElement('div'); d.className='cal-day other-month';
+    d.innerHTML=`<div class="cal-day-num">${i}</div>`; grid.appendChild(d);
+  }
+}
+
+function changeMonth(dir) { calDate.setMonth(calDate.getMonth()+dir); renderCalendar(); }
+
+const typeLabels = {exec:'Executive Education',corp:'Corporate Training',coach:'Coaching',admin:'Admin'};
+const typeColors = {exec:'event-exec',corp:'event-corp',coach:'event-coach',admin:'event-admin'};
+
+function renderUpcoming() {
+  const list = document.getElementById('upcoming-list');
+  const upcoming = sampleEvents.filter(e=>new Date(e.date)>=new Date()).slice(0,5);
+  list.innerHTML = upcoming.map(e => {
+    const d = new Date(e.date);
+    let clickAttr = '';
+    let linkLabel = '';
+    if (e.clientId) {
+      clickAttr = `style="cursor:pointer" onclick="switchTab('clients'); openClient('${e.clientId}')"`;
+      linkLabel = '<span style="font-size:0.7rem;color:var(--sage);margin-left:6px">→ View client</span>';
+    } else if (e.execedId) {
+      clickAttr = `style="cursor:pointer" onclick="switchTab('execed'); openExecEd('${e.execedId}')"`;
+      linkLabel = '<span style="font-size:0.7rem;color:var(--gold);margin-left:6px">→ View program</span>';
+    }
+    return `<div class="upcoming-item" ${clickAttr}>
+      <div class="upcoming-date"><div class="day-num">${d.getDate()}</div><div class="day-name">${d.toLocaleDateString('en-US',{weekday:'short'})}</div></div>
+      <div class="upcoming-info">
+        <div class="title">${e.title}</div>
+        <span class="type-badge ${typeColors[e.type]}">${typeLabels[e.type]}</span>
+        ${linkLabel}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+//  CLIENTS
+// ============================================================
+const COLORS = ['#7A9E7E','#C9A96E','#9B8EA0','#7AADBC','#C9887E','#8EA09B'];
+const SAMPLE_CLIENTS = [
+  {id:'c1',name:'Sarah Mitchell',type:'Coaching',email:'sarah.m@email.com',phone:'555-0101',company:'Innovate Corp',role:'Director of Operations',linkedin:'',next:'Apr 2',notes:'Working on leadership presence and delegation.',sessions:[{date:'Mar 15',topic:'Leadership presence'},{date:'Mar 1',topic:'Delegation strategies'},{date:'Feb 15',topic:'Stakeholder mgmt'}]},
+  {id:'c2',name:'Tom Reynolds',type:'Coaching',email:'tomr@consulting.co',phone:'555-0202',company:'Reynolds Consulting',role:'Founder',linkedin:'',next:'Apr 5',notes:'Building systems for scaling the business.',sessions:[{date:'Mar 18',topic:'Business scaling'},{date:'Mar 4',topic:'Hiring framework'}]},
+  {id:'c3',name:'Acme Industries',type:'Corporate Training',email:'hr@acme.com',phone:'555-0303',company:'Acme Industries',role:'HR Partnership',linkedin:'',next:'Apr 1',notes:'12-person leadership cohort. Module 3 next.',sessions:[{date:'Mar 20',topic:'Module 2: Communication'},{date:'Feb 28',topic:'Module 1: Foundations'}]},
+  {id:'c4',name:'Lisa Kwan',type:'Coaching',email:'lisa.k@techco.io',phone:'555-0404',company:'TechCo',role:'VP Product',linkedin:'',next:'Apr 8',notes:'Executive presence for board presentations.',sessions:[{date:'Mar 10',topic:'Board presentation prep'},{date:'Feb 24',topic:'Executive presence'}]},
+  {id:'c5',name:'BV Group',type:'Corporate Training',email:'training@bvgroup.com',phone:'555-0505',company:'BV Group',role:'L&D Team',linkedin:'',next:'Apr 7',notes:'Custom 6-session conflict resolution series.',sessions:[{date:'Mar 22',topic:'Session 3: Mediation'},{date:'Mar 8',topic:'Session 2: Frameworks'}]},
+  {id:'c6',name:'Amy Walters',type:'Executive Education',email:'amy.w@uni.edu',phone:'555-0606',company:'State University',role:'MBA Student',linkedin:'',next:'Apr 10',notes:'Building negotiation and strategic thinking skills.',sessions:[{date:'Mar 17',topic:'Negotiation tactics'}]},
+];
+
+function getClients() { return JSON.parse(localStorage.getItem('aa_clients') || JSON.stringify(SAMPLE_CLIENTS)); }
+function saveClients(c) { localStorage.setItem('aa_clients', JSON.stringify(c)); }
+function loadClients() { if(!localStorage.getItem('aa_clients')) saveClients(SAMPLE_CLIENTS); renderClients(); }
+
+function renderClients() {
+  const q = (document.getElementById('client-search').value || '').toLowerCase();
+  const clients = getClients().filter(c => !q || c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q) || (c.company||'').toLowerCase().includes(q));
+  const grid = document.getElementById('client-grid');
+  grid.innerHTML = clients.map((c,i) => `
+    <div class="client-card" onclick="openClient('${c.id}')">
+      <div class="client-avatar" style="background:${COLORS[i%COLORS.length]}">${c.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <div class="client-name">${c.name}</div>
+      <div class="client-type">${c.type}${c.company?' · '+c.company:''}</div>
+      <div class="client-stats">
+        <div class="stat-item"><div class="stat-num">${(c.sessions||[]).length}</div><div class="stat-label">Sessions</div></div>
+        <div class="stat-item"><div class="stat-num">${c.next||'—'}</div><div class="stat-label">Next</div></div>
+      </div>
+    </div>`).join('');
+  document.getElementById('stat-clients').textContent = getClients().length;
+}
+
+let currentClientId = null;
+
+function openClient(id) {
+  const clients = getClients();
+  const c = clients.find(x=>x.id===id);
+  if(!c) return;
+  currentClientId = id;
+  const idx = clients.indexOf(c);
+  document.getElementById('drawer-avatar').style.background = COLORS[idx%COLORS.length];
+  document.getElementById('drawer-avatar').textContent = c.name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  document.getElementById('drawer-name').textContent = c.name;
+  document.getElementById('drawer-type').textContent = `${c.type}${c.company?' · '+c.company:''}`;
+  document.getElementById('drawer-total-sessions').textContent = (c.sessions||[]).length;
+  document.getElementById('drawer-this-month').textContent = (c.sessions||[]).filter(s=>s.date&&s.date.includes('Mar')).length;
+  document.getElementById('drawer-next-session').textContent = c.next||'TBD';
+  document.getElementById('de-email').textContent = c.email||'';
+  document.getElementById('de-phone').textContent = c.phone||'';
+  document.getElementById('de-company').textContent = c.company||'';
+  document.getElementById('de-role').textContent = c.role||'';
+  document.getElementById('de-linkedin').textContent = c.linkedin||'';
+  document.getElementById('de-next').textContent = c.next||'';
+  document.getElementById('drawer-notes').value = c.notes||'';
+  document.getElementById('drawer-sessions').innerHTML = (c.sessions||[]).map(s=>`
+    <div class="session-row"><span>${s.date}</span><span style="color:var(--warm-gray);font-size:0.82rem">${s.topic}</span></div>`).join('') || '<p style="color:var(--warm-gray);font-size:0.85rem">No sessions recorded yet.</p>';
+  document.getElementById('client-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function closeDrawer() {
+  document.getElementById('client-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+  currentClientId = null;
+}
+
+function saveDrawerField(field, el) {
+  if(!currentClientId) return;
+  const clients = getClients();
+  const c = clients.find(x=>x.id===currentClientId);
+  if(c) { c[field] = el.textContent.trim(); saveClients(clients); renderClients(); }
+}
+
+function saveDrawerNotes() {
+  if(!currentClientId) return;
+  const clients = getClients();
+  const c = clients.find(x=>x.id===currentClientId);
+  if(c) { c.notes = document.getElementById('drawer-notes').value; saveClients(clients); }
+}
+
+function deleteCurrentClient() {
+  if(!currentClientId || !confirm('Delete this client?')) return;
+  const clients = getClients().filter(c=>c.id!==currentClientId);
+  saveClients(clients); closeDrawer(); renderClients();
+}
+
+function openAddClient() { document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal(e) {
+  if(!e || e.target===document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+function saveNewClient() {
+  const name = document.getElementById('new-name').value.trim();
+  if(!name) return alert('Please enter a name.');
+  const clients = getClients();
+  clients.push({
+    id:'c'+Date.now(), name,
+    type: document.getElementById('new-type').value,
+    email: document.getElementById('new-email').value,
+    phone: document.getElementById('new-phone').value,
+    company: document.getElementById('new-company').value,
+    role: document.getElementById('new-role').value,
+    notes: document.getElementById('new-notes').value,
+    sessions: [], next: ''
+  });
+  saveClients(clients); renderClients(); closeModal();
+  ['new-name','new-email','new-phone','new-company','new-role','new-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function aiSessionPrep() {
+  if(!currentClientId) return;
+  const c = getClients().find(x=>x.id===currentClientId);
+  switchTab('ai'); closeDrawer();
+  document.getElementById('ai-context').value = `Client: ${c.name} | Type: ${c.type} | Role: ${c.role||''} | Notes: ${c.notes||''}`;
+  document.getElementById('chat-input').value = `Help me prepare talking points and questions for my next session with ${c.name}.`;
+  sendChat();
+}
+
+async function aiDraftFollowup() {
+  if(!currentClientId) return;
+  const c = getClients().find(x=>x.id===currentClientId);
+  switchTab('ai'); closeDrawer();
+  document.getElementById('ai-context').value = `Client: ${c.name} | Type: ${c.type} | Notes: ${c.notes||''}`;
+  const lastSession = (c.sessions||[])[0];
+  document.getElementById('chat-input').value = `Draft a warm follow-up email to ${c.name} after our last session${lastSession?' on '+lastSession.topic:''}.`;
+  sendChat();
+}
+
+function deleteCurrentClient() {
+  if(!currentClientId) return;
+  const c = getClients().find(x=>x.id===currentClientId);
+  if(!confirm(`Are you sure you want to delete ${c.name}? This cannot be undone.`)) return;
+  const clients = getClients().filter(x=>x.id!==currentClientId);
+  saveClients(clients);
+  renderClients();
+  closeDrawer();
+  document.getElementById('stat-clients').textContent = clients.length;
+}
+
+// ============================================================
+//  EXECUTIVE EDUCATION
+// ============================================================
+const SAMPLE_EXECED = [
+  {
+    id:'e1', name:'Leadership Excellence Program', institution:'State University',
+    program:'MBA Executive Cohort', contact:'Dr. Patricia Wells', email:'p.wells@stateuni.edu',
+    startDate:'Feb 1, 2025', endDate:'May 30, 2025', cohortSize:'28', status:'active',
+    notes:'8-module program for mid-career managers. Strong group — very engaged. Debrief calls after each module recommended.',
+    modules:[
+      {num:1,title:'Foundations of Leadership',status:'completed'},
+      {num:2,title:'Communication & Influence',status:'completed'},
+      {num:3,title:'Strategic Thinking',status:'completed'},
+      {num:4,title:'Team Dynamics',status:'active'},
+      {num:5,title:'Change Management',status:'upcoming'},
+      {num:6,title:'Executive Presence',status:'upcoming'},
+      {num:7,title:'Decision Making Under Pressure',status:'upcoming'},
+      {num:8,title:'Capstone & Integration',status:'upcoming'},
+    ]
+  },
+  {
+    id:'e2', name:'Women in Leadership Series', institution:'Metro Business Academy',
+    program:'Leadership Certificate', contact:'James Okafor', email:'j.okafor@metrobiz.org',
+    startDate:'Apr 1, 2025', endDate:'Jul 15, 2025', cohortSize:'18', status:'upcoming',
+    notes:'6-session series focused on executive presence, negotiation, and navigating organizational dynamics.',
+    modules:[
+      {num:1,title:'Identity & Leadership Voice',status:'upcoming'},
+      {num:2,title:'Negotiation Strategies',status:'upcoming'},
+      {num:3,title:'Building Influence',status:'upcoming'},
+      {num:4,title:'Navigating Organizations',status:'upcoming'},
+      {num:5,title:'Sponsorship & Advocacy',status:'upcoming'},
+      {num:6,title:'Personal Leadership Plan',status:'upcoming'},
+    ]
+  },
+];
+
+const EXECED_STATUS_LABELS = { active:'Active', upcoming:'Upcoming', completed:'Completed' };
+const EXECED_STATUS_CLASSES = { active:'status-active', upcoming:'status-upcoming', completed:'status-completed' };
+
+function getExecEd() { return JSON.parse(localStorage.getItem('aa_execed') || JSON.stringify(SAMPLE_EXECED)); }
+function saveExecEd(d) { localStorage.setItem('aa_execed', JSON.stringify(d)); }
+function loadExecEd() { if(!localStorage.getItem('aa_execed')) saveExecEd(SAMPLE_EXECED); renderExecEd(); }
+
+function renderExecEd() {
+  const q = (document.getElementById('execed-search').value || '').toLowerCase();
+  const programs = getExecEd().filter(p => !q || p.name.toLowerCase().includes(q) || (p.institution||'').toLowerCase().includes(q));
+  const grid = document.getElementById('execed-grid');
+  const icons = ['🎓','🏛️','📚','🌟','💡','🎯'];
+  grid.innerHTML = programs.map((p, i) => {
+    const done = (p.modules||[]).filter(m=>m.status==='completed').length;
+    const total = (p.modules||[]).length;
+    return `
+    <div class="execed-card" onclick="openExecEd('${p.id}')">
+      <div class="execed-icon">${icons[i%icons.length]}</div>
+      <div class="execed-status ${EXECED_STATUS_CLASSES[p.status]||'status-upcoming'}">${EXECED_STATUS_LABELS[p.status]||p.status}</div>
+      <div class="execed-name">${p.name}</div>
+      <div class="execed-inst">${p.institution||''}</div>
+      <div class="execed-meta">
+        <div class="execed-meta-item">👥 ${p.cohortSize||'—'} participants</div>
+        <div class="execed-meta-item">📋 ${done}/${total} modules</div>
+        ${p.startDate ? `<div class="execed-meta-item">📅 ${p.startDate}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+let currentExecEdId = null;
+
+function openExecEd(id) {
+  const programs = getExecEd();
+  const p = programs.find(x=>x.id===id);
+  if(!p) return;
+  currentExecEdId = id;
+  const icons = ['🎓','🏛️','📚','🌟','💡','🎯'];
+  const idx = programs.indexOf(p);
+  document.getElementById('eed-icon').textContent = icons[idx%icons.length];
+  document.getElementById('eed-name').textContent = p.name;
+  document.getElementById('eed-institution').textContent = p.institution||'';
+  document.getElementById('eed-status-badge').innerHTML = `<span class="execed-status ${EXECED_STATUS_CLASSES[p.status]}">${EXECED_STATUS_LABELS[p.status]||p.status}</span>`;
+  const done = (p.modules||[]).filter(m=>m.status==='completed').length;
+  document.getElementById('eed-cohort').textContent = p.cohortSize||'—';
+  document.getElementById('eed-modules-done').textContent = done;
+  document.getElementById('eed-modules-total').textContent = (p.modules||[]).length;
+  document.getElementById('eed-inst-field').textContent = p.institution||'';
+  document.getElementById('eed-prog-field').textContent = p.program||'';
+  document.getElementById('eed-contact-field').textContent = p.contact||'';
+  document.getElementById('eed-email-field').textContent = p.email||'';
+  document.getElementById('eed-start-field').textContent = p.startDate||'';
+  document.getElementById('eed-end-field').textContent = p.endDate||'';
+  document.getElementById('eed-cohort-field').textContent = p.cohortSize||'';
+  document.getElementById('eed-status-field').value = p.status||'upcoming';
+  document.getElementById('eed-notes').value = p.notes||'';
+  renderModuleList(p.modules||[]);
+  document.getElementById('execed-drawer').classList.add('open');
+  document.getElementById('drawer-overlay').classList.add('open');
+}
+
+function renderModuleList(modules) {
+  const statusClass = {completed:'status-active', active:'status-upcoming', upcoming:'status-completed'};
+  const statusLabel = {completed:'Done', active:'In Progress', upcoming:'Upcoming'};
+  document.getElementById('eed-modules-list').innerHTML = modules.length
+    ? modules.map((m,i) => `
+      <div class="module-row">
+        <span class="module-num">${m.num||i+1}</span>
+        <span style="flex:1">${m.title}</span>
+        <select onchange="updateModuleStatus(${i}, this.value)" style="font-size:0.75rem;border:1px solid var(--border);border-radius:6px;padding:2px 6px;background:var(--cream);color:var(--charcoal)">
+          <option value="upcoming" ${m.status==='upcoming'?'selected':''}>Upcoming</option>
+          <option value="active" ${m.status==='active'?'selected':''}>In Progress</option>
+          <option value="completed" ${m.status==='completed'?'selected':''}>Done ✓</option>
+        </select>
+      </div>`).join('')
+    : '<p style="color:var(--warm-gray);font-size:0.85rem">No modules added yet.</p>';
+}
+
+function updateModuleStatus(idx, status) {
+  if(!currentExecEdId) return;
+  const programs = getExecEd();
+  const p = programs.find(x=>x.id===currentExecEdId);
+  if(p && p.modules[idx]) {
+    p.modules[idx].status = status;
+    saveExecEd(programs);
+    const done = p.modules.filter(m=>m.status==='completed').length;
+    document.getElementById('eed-modules-done').textContent = done;
+    renderExecEd();
+  }
+}
+
+function addModule() {
+  if(!currentExecEdId) return;
+  const title = prompt('Module title:');
+  if(!title) return;
+  const programs = getExecEd();
+  const p = programs.find(x=>x.id===currentExecEdId);
+  if(p) {
+    p.modules = p.modules||[];
+    p.modules.push({num: p.modules.length+1, title, status:'upcoming'});
+    saveExecEd(programs);
+    renderModuleList(p.modules);
+    document.getElementById('eed-modules-total').textContent = p.modules.length;
+    renderExecEd();
+  }
+}
+
+function saveExecEdField(field, el) {
+  if(!currentExecEdId) return;
+  const programs = getExecEd();
+  const p = programs.find(x=>x.id===currentExecEdId);
+  if(p) {
+    p[field] = el.textContent.trim();
+    saveExecEd(programs);
+    renderExecEd();
+    if(field==='institution') document.getElementById('eed-institution').textContent = p.institution;
+    if(field==='cohortSize') document.getElementById('eed-cohort').textContent = p.cohortSize;
+  }
+}
+
+function saveExecEdStatus() {
+  if(!currentExecEdId) return;
+  const programs = getExecEd();
+  const p = programs.find(x=>x.id===currentExecEdId);
+  if(p) {
+    p.status = document.getElementById('eed-status-field').value;
+    saveExecEd(programs);
+    document.getElementById('eed-status-badge').innerHTML = `<span class="execed-status ${EXECED_STATUS_CLASSES[p.status]}">${EXECED_STATUS_LABELS[p.status]}</span>`;
+    renderExecEd();
+  }
+}
+
+function saveExecEdNotes() {
+  if(!currentExecEdId) return;
+  const programs = getExecEd();
+  const p = programs.find(x=>x.id===currentExecEdId);
+  if(p) { p.notes = document.getElementById('eed-notes').value; saveExecEd(programs); }
+}
+
+function closeExecEdDrawer() {
+  document.getElementById('execed-drawer').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+  currentExecEdId = null;
+}
+
+function openAddExecEd() { document.getElementById('execed-modal-overlay').classList.add('open'); }
+function closeExecEdModal(e) {
+  if(!e || e.target===document.getElementById('execed-modal-overlay'))
+    document.getElementById('execed-modal-overlay').classList.remove('open');
+}
+function saveNewExecEd() {
+  const name = document.getElementById('new-eed-name').value.trim();
+  if(!name) return alert('Please enter a program name.');
+  const programs = getExecEd();
+  programs.push({
+    id:'e'+Date.now(), name,
+    institution: document.getElementById('new-eed-inst').value,
+    program: name,
+    contact: document.getElementById('new-eed-contact').value,
+    email: document.getElementById('new-eed-email').value,
+    startDate: document.getElementById('new-eed-start').value,
+    endDate: document.getElementById('new-eed-end').value,
+    cohortSize: document.getElementById('new-eed-cohort').value,
+    status: document.getElementById('new-eed-status').value,
+    notes: document.getElementById('new-eed-notes').value,
+    modules: []
+  });
+  saveExecEd(programs); renderExecEd(); closeExecEdModal();
+  ['new-eed-name','new-eed-inst','new-eed-contact','new-eed-email','new-eed-start','new-eed-end','new-eed-cohort','new-eed-notes'].forEach(id=>document.getElementById(id).value='');
+}
+
+function deleteCurrentExecEd() {
+  if(!currentExecEdId) return;
+  const p = getExecEd().find(x=>x.id===currentExecEdId);
+  if(!confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+  saveExecEd(getExecEd().filter(x=>x.id!==currentExecEdId));
+  renderExecEd(); closeExecEdDrawer();
+}
+
+async function aiModulePrep() {
+  if(!currentExecEdId) return;
+  const p = getExecEd().find(x=>x.id===currentExecEdId);
+  const nextModule = (p.modules||[]).find(m=>m.status==='active'||m.status==='upcoming');
+  switchTab('ai'); closeExecEdDrawer();
+  document.getElementById('ai-context').value = `Program: ${p.name} | Institution: ${p.institution} | Cohort: ${p.cohortSize} participants | Next Module: ${nextModule?nextModule.title:'TBD'} | Notes: ${p.notes||''}`;
+  document.getElementById('chat-input').value = `Help me prepare for the "${nextModule?nextModule.title:'next module'}" in the ${p.name} at ${p.institution}. Suggest key talking points, activities, and discussion questions for a cohort of ${p.cohortSize} participants.`;
+  sendChat();
+}
+
+async function aiExecEdFollowup() {
+  if(!currentExecEdId) return;
+  const p = getExecEd().find(x=>x.id===currentExecEdId);
+  const lastDone = [...(p.modules||[])].reverse().find(m=>m.status==='completed');
+  switchTab('ai'); closeExecEdDrawer();
+  document.getElementById('ai-context').value = `Program: ${p.name} | Institution: ${p.institution} | Contact: ${p.contact} | Last Module: ${lastDone?lastDone.title:'recent session'}`;
+  document.getElementById('chat-input').value = `Draft a warm follow-up email to ${p.contact||'the program coordinator'} at ${p.institution} after completing the "${lastDone?lastDone.title:'recent module'}" in the ${p.name}.`;
+  sendChat();
+}
+
+// ============================================================
+//  EMAIL TRIAGE
+// ============================================================
+async function analyzeEmail() {
+  const emailText = document.getElementById('email-input').value.trim();
+  if(!emailText) return;
+  document.getElementById('email-result').innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+  try {
+    const sys = `You are an assistant helping Alexa triage her professional emails. Analyze the email and provide: 1) Priority level (High/Medium/Low) with reason, 2) Key action needed, 3) Suggested response timeline, 4) Any important details to note. Be concise and practical.`;
+    const result = await callClaude(sys, [{role:'user',content:`Please analyze this email:\n\n${emailText}`}]);
+    document.getElementById('email-result').innerHTML = result.replace(/\n/g,'<br>');
+  } catch(e) {
+    document.getElementById('email-result').textContent = '⚠️ AI error: ' + e.message;
+  }
+}
+
+async function draftReply() {
+  const emailText = document.getElementById('email-input').value.trim();
+  if(!emailText) return;
+  document.getElementById('email-result').innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+  try {
+    const sys = `You are helping Alexa draft professional email replies. She runs a coaching and corporate training business. Draft a warm, professional reply. Use a friendly but professional tone.`;
+    const result = await callClaude(sys, [{role:'user',content:`Draft a reply to this email:\n\n${emailText}`}]);
+    document.getElementById('email-result').innerHTML = result.replace(/\n/g,'<br>');
+  } catch(e) {
+    document.getElementById('email-result').textContent = '⚠️ AI error: ' + e.message;
+  }
+}
+
+// ============================================================
+//  LINKEDIN
+// ============================================================
+let extractedLinkedin = null;
+
+async function extractLinkedin() {
+  const text = document.getElementById('linkedin-input').value.trim();
+  if(!text) return;
+  document.getElementById('linkedin-result').innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+  try {
+    const sys = `Extract contact information from a LinkedIn profile or message. Return ONLY a JSON object with these fields: name, company, role, email (if present, otherwise empty string), phone (if present, otherwise empty string), notes (a 1-2 sentence summary). No markdown, no backticks, just raw JSON.`;
+    const result = await callClaude(sys, [{role:'user',content:text}]);
+    const clean = result.replace(/```json|```/g,'').trim();
+    extractedLinkedin = JSON.parse(clean);
+    renderExtracted(extractedLinkedin);
+    document.getElementById('linkedin-save-btn').style.display='block';
+  } catch(e) {
+    document.getElementById('linkedin-result').textContent = '⚠️ Could not extract info. Error: ' + e.message;
+  }
+}
+
+function renderExtracted(data) {
+  const fields = [['name','Name'],['company','Company'],['role','Role'],['email','Email'],['phone','Phone'],['notes','Notes']];
+  document.getElementById('linkedin-result').innerHTML = fields.map(([k,l])=>data[k]?`
+    <div class="extracted-field"><label>${l}</label><div class="extracted-value">${data[k]}</div></div>`:''
+  ).join('');
+}
+
+async function draftLinkedinMsg() {
+  const text = document.getElementById('linkedin-input').value.trim();
+  if(!text) return;
+  document.getElementById('linkedin-result').innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+  try {
+    const sys = `You are helping Alexa, a coaching and executive education professional, draft personalized LinkedIn outreach messages. Write a warm, genuine message that feels personal, not sales-y. 3-4 sentences max.`;
+    const result = await callClaude(sys, [{role:'user',content:`Draft a LinkedIn message based on this profile:\n\n${text}`}]);
+    document.getElementById('linkedin-result').innerHTML = `<div style="background:var(--cream);border-radius:10px;padding:16px;font-size:0.88rem;line-height:1.6">${result.replace(/\n/g,'<br>')}</div>`;
+    document.getElementById('linkedin-save-btn').style.display='none';
+  } catch(e) {
+    document.getElementById('linkedin-result').textContent = '⚠️ AI error: ' + e.message;
+  }
+}
+
+function saveLinkedinToClients() {
+  if(!extractedLinkedin) return;
+  const clients = getClients();
+  clients.push({
+    id:'c'+Date.now(),
+    name: extractedLinkedin.name || 'Unknown',
+    type: 'Coaching',
+    email: extractedLinkedin.email || '',
+    phone: extractedLinkedin.phone || '',
+    company: extractedLinkedin.company || '',
+    role: extractedLinkedin.role || '',
+    notes: extractedLinkedin.notes || '',
+    sessions: [], next: '', linkedin: ''
+  });
+  saveClients(clients); renderClients();
+  alert(`${extractedLinkedin.name || 'Contact'} has been added to your clients! 🎉`);
+  document.getElementById('linkedin-save-btn').style.display='none';
+  extractedLinkedin = null;
+}
+
+// ============================================================
+//  ANTHROPIC API — routed securely through Cloudflare Worker
+// ============================================================
+async function callClaude(systemPrompt, messages) {
+  const response = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: messages
+    })
+  });
+  if (!response.ok) {
+    const err = await response.json().catch(()=>({}));
+    throw new Error(`${response.status} - ${err.error?.message || 'Unknown error'}`);
+  }
+  const data = await response.json();
+  return data.content.map(b => b.type === 'text' ? b.text : '').join('');
+}
+</script>
+</body>
+</html>
