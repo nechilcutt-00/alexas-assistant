@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Alexa's Assistant">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#FAF7F2">
 <title>Alexa's Assistant</title>
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
@@ -425,7 +430,108 @@
   .day-popup-dot { width: 10px; height: 10px; border-radius: 3px; margin-top: 4px; flex-shrink: 0; }
   .day-popup-empty { color: var(--warm-gray); font-size: 0.88rem; text-align: center; padding: 20px 0; }
 
-  /* ===== EMAIL TRIAGE TAB ===== */
+  /* ===== MOBILE OPTIMIZATIONS ===== */
+  @media (max-width: 600px) {
+    /* Prevent iOS font size adjustment */
+    html { -webkit-text-size-adjust: 100%; }
+
+    /* Header compact on mobile */
+    header { padding: 0 14px; height: 52px; }
+    .logo { font-size: 1.3rem; }
+    .header-date { display: none; }
+
+    /* Hide top nav on mobile — replaced by bottom nav */
+    nav { display: none; }
+
+    /* Main padding reduced */
+    main { padding: 14px 14px 80px 14px; }
+
+    /* Cards tighter */
+    .card { padding: 16px; border-radius: 12px; }
+    .card-title { font-size: 1.1rem; }
+
+    /* AI layout single column */
+    .ai-layout { grid-template-columns: 1fr; }
+    .ai-sidebar { display: none; }
+
+    /* Chat */
+    #chat-messages { min-height: 280px; max-height: 340px; }
+    .message { max-width: 95%; }
+
+    /* Quick prompts scroll horizontal */
+    .quick-prompts { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
+    .quick-prompts::-webkit-scrollbar { display: none; }
+    .quick-prompt { flex-shrink: 0; }
+
+    /* Client grid single column */
+    .client-grid { grid-template-columns: 1fr; }
+    .execed-grid { grid-template-columns: 1fr; }
+
+    /* Drawers full width on mobile */
+    .drawer { width: 100%; max-width: 100%; }
+    .execed-drawer { width: 100%; max-width: 100%; }
+
+    /* Calendar compact */
+    .cal-day { min-height: 60px; padding: 4px 3px; }
+    .cal-day-num { font-size: 0.75rem; }
+    .cal-event { font-size: 0.65rem; padding: 1px 4px; }
+    .cal-day-header { font-size: 0.68rem; padding: 6px 2px; }
+    .calendar-title { font-size: 1.2rem; }
+
+    /* Email and LinkedIn single column */
+    .email-layout { grid-template-columns: 1fr; }
+    .linkedin-layout { grid-template-columns: 1fr; }
+
+    /* Modals full width */
+    .modal { width: 100%; max-width: 100%; border-radius: 18px 18px 0 0; position: fixed; bottom: 0; margin: 0; }
+    .modal-overlay { align-items: flex-end; }
+    .day-popup { width: 100%; max-width: 100%; border-radius: 18px 18px 0 0; }
+    .day-popup-overlay { align-items: flex-end; }
+
+    /* Buttons larger touch targets */
+    .btn { padding: 12px 20px; font-size: 0.9rem; }
+    .btn-sm { padding: 10px 14px; font-size: 0.85rem; }
+    .pin-btn { width: 72px; height: 72px; font-size: 1.4rem; }
+
+    /* Inputs no zoom on iOS */
+    input, textarea, select { font-size: 16px !important; }
+
+    /* Upcoming items */
+    .upcoming-item { padding: 10px; }
+  }
+
+  /* BOTTOM NAVIGATION — mobile only */
+  .bottom-nav {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--warm-white);
+    border-top: 1px solid var(--border);
+    padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+    z-index: 150;
+    box-shadow: 0 -2px 12px var(--shadow);
+  }
+  .bottom-nav-inner {
+    display: flex; justify-content: space-around; align-items: center;
+  }
+  .bottom-tab {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px; padding: 6px 10px; cursor: pointer;
+    border-radius: 10px; transition: all 0.15s; min-width: 52px;
+    background: none; border: none; font-family: 'DM Sans', sans-serif;
+  }
+  .bottom-tab .tab-icon { font-size: 1.3rem; line-height: 1; }
+  .bottom-tab .tab-label { font-size: 0.62rem; color: var(--warm-gray); font-weight: 500; letter-spacing: 0.02em; }
+  .bottom-tab.active .tab-label { color: var(--sage-dark); }
+  .bottom-tab.active .tab-icon { transform: scale(1.1); }
+
+  @media (max-width: 600px) {
+    .bottom-nav { display: block; }
+  }
+
+  /* Safe area for notched phones */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .bottom-nav { padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  }
   .email-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   @media (max-width: 768px) { .email-layout { grid-template-columns: 1fr; } }
   .email-result { background: var(--cream); border-radius: 12px; padding: 16px; font-size: 0.88rem; line-height: 1.6; min-height: 200px; white-space: pre-wrap; }
@@ -496,6 +602,36 @@
     </button>
   </div>
 </header>
+
+<!-- BOTTOM NAV (mobile only) -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bottom-tab active" id="btab-ai" onclick="switchTab('ai')">
+      <span class="tab-icon">✦</span>
+      <span class="tab-label">AI</span>
+    </button>
+    <button class="bottom-tab" id="btab-schedule" onclick="switchTab('schedule')">
+      <span class="tab-icon">📅</span>
+      <span class="tab-label">Schedule</span>
+    </button>
+    <button class="bottom-tab" id="btab-clients" onclick="switchTab('clients')">
+      <span class="tab-icon">👤</span>
+      <span class="tab-label">Clients</span>
+    </button>
+    <button class="bottom-tab" id="btab-execed" onclick="switchTab('execed')">
+      <span class="tab-icon">🎓</span>
+      <span class="tab-label">Exec Ed</span>
+    </button>
+    <button class="bottom-tab" id="btab-email" onclick="switchTab('email')">
+      <span class="tab-icon">📧</span>
+      <span class="tab-label">Email</span>
+    </button>
+    <button class="bottom-tab" id="btab-linkedin" onclick="switchTab('linkedin')">
+      <span class="tab-icon">💼</span>
+      <span class="tab-label">LinkedIn</span>
+    </button>
+  </div>
+</div>
 
 <!-- TABS -->
 <nav>
@@ -883,6 +1019,10 @@ function switchTab(id) {
   document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
   document.querySelector(`[onclick="switchTab('${id}')"]`).classList.add('active');
   document.getElementById('tab-'+id).classList.add('active');
+  // Sync bottom nav
+  document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
+  const btab = document.getElementById('btab-'+id);
+  if (btab) btab.classList.add('active');
 }
 
 // ============================================================
