@@ -773,7 +773,7 @@
     <div class="email-layout">
       <div>
         <div class="card" style="padding:0;overflow:hidden">
-          <div id="gmail-list" style="max-height:520px;overflow-y:auto">
+          <div id="gmail-list" style="height:420px;overflow-y:auto">
             <div style="padding:24px;color:var(--warm-gray);font-size:0.88rem;text-align:center">
               Connect Google and click "Load Emails" to see your inbox.<br><br>
               Or paste an email manually below.
@@ -789,10 +789,10 @@
           </div>
         </div>
       </div>
-      <div>
+      <div style="position:sticky;top:80px;display:flex;flex-direction:column;gap:16px">
         <div class="card" id="email-analysis-card">
           <div class="card-title">AI Analysis</div>
-          <div id="email-result" class="email-result" style="color:var(--warm-gray)">Select an email or paste one to get started…</div>
+          <div id="email-result" class="email-result" style="color:var(--warm-gray);max-height:380px;overflow-y:auto">Select an email or paste one to get started…</div>
         </div>
         <div class="card" id="email-actions-card" style="display:none;margin-top:0">
           <div class="card-title">Quick Actions</div>
