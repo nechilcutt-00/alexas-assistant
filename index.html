@@ -1530,8 +1530,9 @@ async function sheetsRequest(method, path, body) {
     },
     body: body ? JSON.stringify(body) : undefined
   });
-  if (!res.ok) throw new Error('Sheets API error: ' + res.status);
-  return res.json();
+  const json = await res.json();
+  if (!res.ok) throw new Error(`${res.status}: ${json.error?.message || 'Sheets API error'}`);
+  return json;
 }
 
 async function ensureSheetsSetup() {
@@ -1594,9 +1595,13 @@ async function syncFromSheets() {
       saveExecEd(programs);
       renderExecEd();
     }
+    // Push local data up to sheets
+    await pushClientsToSheets();
+    await pushExecEdToSheets();
     setSyncStatus('✓ Synced', false);
   } catch(e) {
-    setSyncStatus('⚠️ Sync failed', true);
+    console.error('Sync error:', e);
+    setSyncStatus('⚠️ ' + e.message, true);
   }
 }
 
