@@ -920,6 +920,13 @@ function toggleVoice() {
 // ============================================================
 let realCalendarEvents = []; // populated after Google sign-in
 
+// Keywords that qualify an event to show in the app
+const CALENDAR_KEYWORDS = [
+  'coaching','coach','training','exec ed','executive','session',
+  'client','workshop','program','module','consulting','seminar',
+  'cohort','leadership','presentation','facilitat','flight','stay','podcast'
+];
+
 async function fetchGoogleCalendar() {
   if (!googToken) return;
   setSyncStatus('⟳ Loading calendar…', false);
@@ -927,36 +934,48 @@ async function fetchGoogleCalendar() {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
     const end = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
-    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=100`;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${start}&timeMax=${end}&singleEvents=true&orderBy=startTime&maxResults=200`;
     const res = await fetch(url, {
       headers: { 'Authorization': `Bearer ${googToken}` }
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error?.message || 'Calendar API error');
-    realCalendarEvents = (data.items || []).map(e => {
-      const dateStr = e.start?.date || e.start?.dateTime?.split('T')[0];
-      const d = new Date(dateStr + 'T00:00:00');
-      // Try to match to a client by name
-      const clients = getClients();
-      const matchedClient = clients.find(c => e.summary && e.summary.toLowerCase().includes(c.name.toLowerCase().split(' ')[0].toLowerCase()));
-      // Try to match to exec ed program
-      const programs = getExecEd();
-      const matchedProgram = programs.find(p => e.summary && e.summary.toLowerCase().includes(p.name.toLowerCase().split(' ')[0].toLowerCase()));
-      // Determine type
-      let type = 'admin';
-      const title = (e.summary || '').toLowerCase();
-      if (title.includes('coach') || matchedClient?.type === 'Coaching') type = 'coach';
-      else if (title.includes('corp') || title.includes('training') || matchedClient?.type === 'Corporate Training') type = 'corp';
-      else if (title.includes('exec') || title.includes('exec ed') || matchedProgram) type = 'exec';
-      return {
-        date: d.toDateString(),
-        title: e.summary || '(No title)',
-        type,
-        clientId: matchedClient?.id || null,
-        execedId: matchedProgram?.id || null,
-        isReal: true
-      };
-    });
+
+    const clients = getClients();
+    const programs = getExecEd();
+
+    realCalendarEvents = (data.items || [])
+      .filter(e => {
+        const title = (e.summary || '').toLowerCase();
+        // Always include if matches a client name
+        const matchesClient = clients.some(c => title.includes(c.name.toLowerCase().split(' ')[0]));
+        // Always include if matches an exec ed program
+        const matchesProgram = programs.some(p => title.includes(p.name.toLowerCase().split(' ')[0]));
+        // Include if matches any keyword
+        const matchesKeyword = CALENDAR_KEYWORDS.some(k => title.includes(k));
+        return matchesClient || matchesProgram || matchesKeyword;
+      })
+      .map(e => {
+        const dateStr = e.start?.date || e.start?.dateTime?.split('T')[0];
+        const d = new Date(dateStr + 'T00:00:00');
+        const title = (e.summary || '').toLowerCase();
+        const matchedClient = clients.find(c => title.includes(c.name.toLowerCase().split(' ')[0]));
+        const matchedProgram = programs.find(p => title.includes(p.name.toLowerCase().split(' ')[0]));
+        let type = 'admin';
+        if (title.includes('coach') || matchedClient?.type === 'Coaching') type = 'coach';
+        else if (title.includes('corp') || title.includes('training') || matchedClient?.type === 'Corporate Training') type = 'corp';
+        else if (title.includes('exec') || title.includes('module') || matchedProgram) type = 'exec';
+        else if (title.includes('session') || title.includes('client')) type = 'coach';
+        return {
+          date: d.toDateString(),
+          title: e.summary || '(No title)',
+          type,
+          clientId: matchedClient?.id || null,
+          execedId: matchedProgram?.id || null,
+          isReal: true
+        };
+      });
+
     renderCalendar();
     renderUpcoming();
     setSyncStatus('✓ Calendar loaded', false);
