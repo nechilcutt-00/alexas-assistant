@@ -540,6 +540,17 @@
   .priority-medium { background: #fff8e1; color: #7a5c00; }
   .priority-low { background: #f0f7f0; color: #2e7d32; }
 
+  /* Gmail list */
+  .gmail-item { padding: 14px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+  .gmail-item:hover { background: var(--cream); }
+  .gmail-item.selected { background: #f0f7f0; border-left: 3px solid var(--sage); }
+  .gmail-item.unread .gmail-subject { font-weight: 700; }
+  .gmail-subject { font-size: 0.88rem; color: var(--charcoal); margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gmail-meta { display: flex; justify-content: space-between; align-items: center; }
+  .gmail-from { font-size: 0.78rem; color: var(--warm-gray); }
+  .gmail-date { font-size: 0.72rem; color: var(--warm-gray); }
+  .gmail-snippet { font-size: 0.78rem; color: var(--warm-gray); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
   /* ===== LINKEDIN TAB ===== */
   .linkedin-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
   @media (max-width: 768px) { .linkedin-layout { grid-template-columns: 1fr; } }
@@ -750,18 +761,49 @@
 
   <!-- EMAIL TRIAGE -->
   <div class="tab-content" id="tab-email">
-    <div class="email-layout">
-      <div class="card">
-        <div class="card-title">Paste Email Content</div>
-        <textarea id="email-input" placeholder="Paste the email you want to triage or draft a reply to…" style="min-height:200px;margin-bottom:14px"></textarea>
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-primary" onclick="analyzeEmail()">Analyze & Prioritize</button>
-          <button class="btn btn-secondary" onclick="draftReply()">Draft Reply</button>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div class="card-title" style="margin-bottom:0">📧 Email Triage</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button class="btn btn-secondary btn-sm" onclick="fetchGmail()" id="gmail-fetch-btn">⟳ Load Emails</button>
+          <span id="gmail-status" style="font-size:0.78rem;color:var(--warm-gray)"></span>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">AI Analysis</div>
-        <div id="email-result" class="email-result" style="color:var(--warm-gray)">Your email analysis will appear here…</div>
+    </div>
+    <div class="email-layout">
+      <div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div id="gmail-list" style="max-height:520px;overflow-y:auto">
+            <div style="padding:24px;color:var(--warm-gray);font-size:0.88rem;text-align:center">
+              Connect Google and click "Load Emails" to see your inbox.<br><br>
+              Or paste an email manually below.
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin-top:16px">
+          <div class="card-title">Paste Email Manually</div>
+          <textarea id="email-input" placeholder="Paste an email here to analyze or draft a reply…" style="min-height:140px;margin-bottom:14px"></textarea>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="analyzeEmail()">Analyze & Prioritize</button>
+            <button class="btn btn-secondary" onclick="draftReply()">Draft Reply</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="card" id="email-analysis-card">
+          <div class="card-title">AI Analysis</div>
+          <div id="email-result" class="email-result" style="color:var(--warm-gray)">Select an email or paste one to get started…</div>
+        </div>
+        <div class="card" id="email-actions-card" style="display:none">
+          <div class="card-title">Quick Actions</div>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <button class="btn btn-secondary" onclick="gmailSaveToClient()">👤 Save to Existing Client</button>
+            <button class="btn btn-secondary" onclick="gmailCreateClient()">➕ Create New Client</button>
+            <button class="btn btn-secondary" onclick="gmailAddSession()">📋 Log as Session</button>
+            <button class="btn btn-gold" onclick="gmailDraftReply()">📧 Draft Reply</button>
+          </div>
+          <div id="email-action-result" style="margin-top:14px;font-size:0.85rem;color:var(--sage-dark)"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -971,7 +1013,7 @@ const WORKER_URL = 'https://alexa-proxy.nechilcutt.workers.dev';
 // ============================================================
 const GOOG_CLIENT_ID = '400814542208-3topsa7ad8el51vhv7c46pcv8ea2ugr0.apps.googleusercontent.com';
 const GOOG_SHEET_ID  = '1JQ6GUOaUDElA0xQtdjQdXIwxTFGdtUPY5q6BGD0ptfs';
-const GOOG_SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.readonly';
+const GOOG_SCOPES    = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly';
 let   googToken      = null;  // OAuth access token, held in memory only
 
 // ============================================================
@@ -1790,6 +1832,7 @@ function googleSignIn() {
       await ensureSheetsSetup();
       await syncFromSheets();
       await fetchGoogleCalendar();
+      await fetchGmail();
     }
   });
   client.requestAccessToken();
@@ -1935,6 +1978,218 @@ function safeParseJSON(str, fallback) {
   try { return JSON.parse(str); } catch { return fallback; }
 }
 
+// ============================================================
+//  GMAIL INTEGRATION
+// ============================================================
+let gmailMessages = [];
+let selectedEmail = null;
+
+async function fetchGmail() {
+  if (!googToken) {
+    document.getElementById('gmail-status').textContent = 'Connect Google first';
+    return;
+  }
+  const btn = document.getElementById('gmail-fetch-btn');
+  const status = document.getElementById('gmail-status');
+  btn.textContent = '⟳ Loading…';
+  status.textContent = '';
+  try {
+    // Get list of messages
+    const listRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=20&labelIds=INBOX', {
+      headers: { 'Authorization': `Bearer ${googToken}` }
+    });
+    const listData = await listRes.json();
+    if (!listRes.ok) throw new Error(listData.error?.message || 'Gmail API error');
+    const messages = listData.messages || [];
+
+    // Fetch each message's details
+    gmailMessages = await Promise.all(messages.map(async m => {
+      const msgRes = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`, {
+        headers: { 'Authorization': `Bearer ${googToken}` }
+      });
+      const msg = await msgRes.json();
+      const headers = msg.payload?.headers || [];
+      const get = name => headers.find(h=>h.name===name)?.value || '';
+      return {
+        id: m.id,
+        subject: get('Subject') || '(No subject)',
+        from: get('From'),
+        date: get('Date'),
+        snippet: msg.snippet || '',
+        unread: (msg.labelIds || []).includes('UNREAD'),
+        body: null // loaded on demand
+      };
+    }));
+
+    renderGmailList();
+    status.textContent = `${gmailMessages.length} emails loaded`;
+    btn.textContent = '⟳ Refresh';
+  } catch(e) {
+    status.textContent = '⚠️ ' + e.message;
+    btn.textContent = '⟳ Load Emails';
+    console.error('Gmail error:', e);
+  }
+}
+
+function renderGmailList() {
+  const list = document.getElementById('gmail-list');
+  if (!gmailMessages.length) {
+    list.innerHTML = '<div style="padding:24px;text-align:center;color:var(--warm-gray);font-size:0.88rem">No emails found.</div>';
+    return;
+  }
+  list.innerHTML = gmailMessages.map((m,i) => `
+    <div class="gmail-item ${m.unread?'unread':''}" onclick="selectEmail(${i})">
+      <div class="gmail-meta">
+        <span class="gmail-from">${formatEmailFrom(m.from)}</span>
+        <span class="gmail-date">${formatEmailDate(m.date)}</span>
+      </div>
+      <div class="gmail-subject">${m.subject}</div>
+      <div class="gmail-snippet">${m.snippet}</div>
+    </div>`).join('');
+}
+
+async function selectEmail(idx) {
+  // Highlight selected
+  document.querySelectorAll('.gmail-item').forEach((el,i) => el.classList.toggle('selected', i===idx));
+  const m = gmailMessages[idx];
+
+  // Load full body if not yet fetched
+  if (!m.body) {
+    try {
+      const res = await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${m.id}?format=full`, {
+        headers: { 'Authorization': `Bearer ${googToken}` }
+      });
+      const data = await res.json();
+      m.body = extractEmailBody(data.payload);
+    } catch(e) {
+      m.body = m.snippet;
+    }
+  }
+
+  selectedEmail = m;
+  // Put body in the manual textarea so existing analyze/draft functions work
+  document.getElementById('email-input').value = `From: ${m.from}\nSubject: ${m.subject}\nDate: ${m.date}\n\n${m.body}`;
+  // Show action buttons
+  document.getElementById('email-actions-card').style.display = 'block';
+  document.getElementById('email-action-result').textContent = '';
+  // Auto-analyze
+  analyzeEmail();
+}
+
+function extractEmailBody(payload) {
+  if (!payload) return '';
+  // Try plain text first
+  if (payload.mimeType === 'text/plain' && payload.body?.data) {
+    return atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+  }
+  // Try parts
+  if (payload.parts) {
+    for (const part of payload.parts) {
+      if (part.mimeType === 'text/plain' && part.body?.data) {
+        return atob(part.body.data.replace(/-/g,'+').replace(/_/g,'/'));
+      }
+    }
+    // Try nested parts
+    for (const part of payload.parts) {
+      const nested = extractEmailBody(part);
+      if (nested) return nested;
+    }
+  }
+  return payload.body?.data ? atob(payload.body.data.replace(/-/g,'+').replace(/_/g,'/')) : '';
+}
+
+function formatEmailFrom(from) {
+  // Extract just the name if present: "Jane Smith <jane@email.com>" → "Jane Smith"
+  const match = from.match(/^"?([^"<]+)"?\s*</);
+  return match ? match[1].trim() : from.replace(/<.*>/, '').trim();
+}
+
+function formatEmailDate(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  if (d.getFullYear() === now.getFullYear()) return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  return d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+}
+
+// ---- Gmail Quick Actions ----
+
+async function gmailSaveToClient() {
+  if (!selectedEmail) return;
+  const clients = getClients();
+  const fromEmail = selectedEmail.from.match(/<(.+)>/)?.[1] || selectedEmail.from;
+  // Try to find matching client by email
+  const matched = clients.find(c => c.email && c.email.toLowerCase() === fromEmail.toLowerCase());
+  if (matched) {
+    // Append to notes
+    const note = `\n[Email ${new Date().toLocaleDateString()}] Re: ${selectedEmail.subject}`;
+    matched.notes = (matched.notes || '') + note;
+    saveClients(clients);
+    document.getElementById('email-action-result').textContent = `✓ Saved to ${matched.name}'s notes`;
+  } else {
+    document.getElementById('email-action-result').textContent = `No client found matching ${fromEmail}. Try "Create New Client" instead.`;
+  }
+}
+
+async function gmailCreateClient() {
+  if (!selectedEmail) return;
+  // Use AI to extract contact info from email
+  document.getElementById('email-action-result').textContent = '⟳ Extracting contact info…';
+  try {
+    const sys = `Extract contact information from this email. Return ONLY a JSON object with: name, company, role, email, phone (if present, else empty string), notes (1-2 sentence summary of who they are and context). No markdown, raw JSON only.`;
+    const result = await callClaude(sys, [{role:'user', content: document.getElementById('email-input').value}]);
+    const clean = result.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+    // Pre-fill add client modal
+    document.getElementById('new-name').value = data.name || '';
+    document.getElementById('new-email').value = data.email || '';
+    document.getElementById('new-company').value = data.company || '';
+    document.getElementById('new-role').value = data.role || '';
+    document.getElementById('new-notes').value = data.notes || '';
+    openAddClient();
+    document.getElementById('email-action-result').textContent = '✓ Client form pre-filled — review and save';
+  } catch(e) {
+    document.getElementById('email-action-result').textContent = '⚠️ Could not extract info: ' + e.message;
+  }
+}
+
+async function gmailAddSession() {
+  if (!selectedEmail) return;
+  document.getElementById('email-action-result').textContent = '⟳ Extracting session details…';
+  try {
+    const sys = `Extract session/meeting details from this email. Return ONLY a JSON object with: clientName, date (formatted like "Apr 15"), topic (brief description). No markdown, raw JSON only.`;
+    const result = await callClaude(sys, [{role:'user', content: document.getElementById('email-input').value}]);
+    const clean = result.replace(/```json|```/g,'').trim();
+    const data = JSON.parse(clean);
+    const clients = getClients();
+    const matched = clients.find(c => c.name.toLowerCase().includes((data.clientName||'').toLowerCase().split(' ')[0]));
+    if (matched) {
+      matched.sessions = matched.sessions || [];
+      matched.sessions.unshift({ date: data.date || new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}), topic: data.topic || selectedEmail.subject });
+      saveClients(clients);
+      document.getElementById('email-action-result').textContent = `✓ Session logged to ${matched.name}`;
+    } else {
+      document.getElementById('email-action-result').textContent = `Could not match to a client. Client name detected: "${data.clientName}"`;
+    }
+  } catch(e) {
+    document.getElementById('email-action-result').textContent = '⚠️ ' + e.message;
+  }
+}
+
+async function gmailDraftReply() {
+  if (!selectedEmail) return;
+  document.getElementById('email-result').innerHTML = '<div class="loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div>';
+  try {
+    const sys = `You are helping Alexa draft professional email replies. She runs a coaching and corporate training business. Draft a warm, professional reply to the email provided. Use a friendly but professional tone. Format as a ready-to-send email.`;
+    const result = await callClaude(sys, [{role:'user', content:`Draft a reply to this email:\n\n${document.getElementById('email-input').value}`}]);
+    document.getElementById('email-result').innerHTML = result.replace(/\n/g,'<br>');
+  } catch(e) {
+    document.getElementById('email-result').textContent = '⚠️ AI error: ' + e.message;
+  }
+}
+
+// Trigger gmail fetch after Google sign-in
 // ============================================================
 //  ANTHROPIC API — routed securely through Cloudflare Worker
 // ============================================================
